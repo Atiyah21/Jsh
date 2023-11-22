@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <limits.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -31,6 +32,22 @@ static char **decoupe_chemin(char *chemin, int *x)
         return chemin_decoupe;
 }
 
+	 int pwd(){
+
+                char *actuel = malloc(PATH_MAX);
+
+                if(getcwd(actuel, PATH_MAX) == NULL){
+                        perror("pwd: Erreur getcwd");
+                        free(actuel);
+                        return 1;
+                }
+
+                printf("%s\n", actuel);
+                free(actuel);
+                return 0;
+        }
+
+
 int main(int argc, char const *argv[])
 {
         int x;
@@ -42,7 +59,10 @@ int main(int argc, char const *argv[])
                 char **ligne = decoupe_chemin(buf, &x);
                 for (int i = 0; i < x; ++i)
                 {
-                        printf("%s\n", *(ligne + i));
+                        if(strcmp(*(ligne+i), "pwd") == 0)
+				pwd();
+			else
+				printf("%s\n", *(ligne + i));
                 }
         }
         return 0;
