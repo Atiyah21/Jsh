@@ -5,7 +5,7 @@ EXEC = jsh
 O = jsh.o
 
 build : $(O)
-gcc -Wall -o jsh jsh.c -lreadline
+	gcc -Wall -o jsh jsh.c commande.o -lreadline
 
 run : build
 	./$(EXEC)

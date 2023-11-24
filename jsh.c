@@ -4,45 +4,47 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include "commande.h"
 
-static char **decoupe_chemin(char *chemin, int *x)
+static char **parseur(char *ligne, int *x)
 {
-        assert(chemin != NULL);
-        assert(*chemin != '\0');
+        assert(ligne != NULL);
+        assert(*ligne != '\0');
 
-        size_t len = strlen(chemin);
-        if (*(chemin + len - 1) == ' ')
+        size_t len = strlen(ligne);
+        if (*(ligne + len - 1) == ' ')
                 return NULL;
 
         size_t nb_mots = 1;
 
         for (size_t i = 0; i < len; ++i)
-                if (*(chemin + i) == ' ')
+                if (*(ligne + i) == ' ')
                         ++nb_mots;
         *x = nb_mots;
-        char **chemin_decoupe = malloc(nb_mots * sizeof(char *));
-        *chemin_decoupe = strtok(chemin, " ");
+        char **parseur = malloc(nb_mots * sizeof(char *));
+        *parseur = strtok(ligne, " ");
 
         for (size_t i = 1; i < nb_mots; ++i)
-                *(chemin_decoupe + i) = strtok(NULL, " ");
+                *(parseur + i) = strtok(NULL, " ");
 
-        return chemin_decoupe;
+        return parseur;
 }
 
 int main(int argc, char const *argv[])
 {
         int x;
-        rl_initialize();
+        //rl_initialize();
         //rl_outstream = stderr;
         while (1)
         {
                 char *buf = readline(">");
-                char **ligne = decoupe_chemin(buf, &x);
+                char **ligne = parseur(buf, &x);
                 for (int i = 0; i < x; ++i)
                 {
-                        printf("%s\n", *(ligne + i));
+                        int res = execute_externe(ligne,x);
                 }
         }
         return 0;
