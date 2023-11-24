@@ -11,17 +11,14 @@
 static char **parceur(char *ligne, int *x)
 {
         assert(ligne != NULL);
-        assert(*ligne != '\0');
 
         size_t len = strlen(ligne);
-        if (*(ligne + len - 1) == ' ')
-                return NULL;
-
         size_t nb_mots = 1;
-
         for (size_t i = 0; i < len; ++i)
                 if (*(ligne + i) == ' ')
+                {
                         ++nb_mots;
+                }
         *x = nb_mots;
         char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
         *ligne_decoupe = strtok(ligne, " ");
@@ -36,6 +33,11 @@ int pwd()
 {
 
         char *actuel = malloc(PATH_MAX);
+        if (actuel == NULL)
+        {
+                perror("pwd: Erreur malloc");
+                return 1;
+        }
 
         if (getcwd(actuel, PATH_MAX) == NULL)
         {
@@ -57,13 +59,16 @@ int main(int argc, char const *argv[])
         while (1)
         {
                 char *buf = readline(">");
-                char **ligne = parceur(buf, &x);
-                for (int i = 0; i < x; ++i)
+                if (*buf != '\0')
                 {
-                        if (strcmp(*(ligne + i), "pwd") == 0)
-                                pwd();
-                        else
-                                printf("%s\n", *(ligne + i));
+                        char **ligne = parceur(buf, &x);
+                        for (int i = 0; i < x; ++i)
+                        {
+                                if (strcmp(*(ligne + i), "pwd") == 0)
+                                        pwd();
+                                else
+                                        printf("%s\n", *(ligne + i));
+                        }
                 }
         }
         return 0;
