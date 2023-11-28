@@ -12,13 +12,28 @@
 static int ret = 0;
 static int running = 1; // 0 si on a terminé
 
+static bool space_only(char *ligne) {
+  for (int i = 0; i < strlen(ligne); ++i) {
+    if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
+      return false;
+  }
+  return true;
+}
+
 static char **parceur(char *ligne, int *x) {
   assert(ligne != NULL);
-
+  if (space_only(ligne)) {
+    *x = 0;
+    return NULL;
+  }
   size_t len = strlen(ligne);
   size_t nb_mots = 1;
+  if (*(ligne) == ' ')
+    nb_mots = 0;
   for (size_t i = 0; i < len; ++i)
-    if (*(ligne + i) == ' ') {
+    if (*(ligne + i) == ' ' &&
+        (*(ligne + i + 1) != ' ' && *(ligne + i + 1) != '\0')) {
+
       ++nb_mots;
     }
   *x = nb_mots;
@@ -59,12 +74,13 @@ int execute(int argc, char *argv[]) {
     printf("la valeur de retour est %d \n", ret);
     return ret;
   }
-  if (strcmp(argv[0], "exit") == 0)
+  if (strcmp(argv[0], "exit") == 0) {
     running = 0;
-  if (argc > 1) {
-    return atoi(argv[1]);
-  } else
-    return ret;
+    if (argc > 1) {
+      return atoi(argv[1]);
+    } else
+      return ret;
+  }
   switch (fork()) {
   case 0:
     execvp(argv[0], argv + 1);
@@ -76,6 +92,7 @@ int execute(int argc, char *argv[]) {
 int main(int argc, char const *argv[]) {
   int x;
   rl_initialize();
+  char **ligne;
   // rl_outstream = stderr;
   while (running) {
     char *buf = readline(">");
@@ -84,6 +101,10 @@ int main(int argc, char const *argv[]) {
       ret = execute(x, ligne);
     }
   }
+  
+  for(int i =0 ; i<x;i++)
+        free(*(ligne +i));
+free(ligne);
   exit(ret);
   return 0;
 }
