@@ -134,7 +134,7 @@ int main(int argc, char const *argv[])
 					i++;
 				}
                                 else{
-                                        printf("%s\n", *(ligne + i));
+                                        printf("%s\n", *(ligne + i+ 1));
                         
 				}
 			}
