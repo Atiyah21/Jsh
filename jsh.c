@@ -8,17 +8,34 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+static bool space_only(char *ligne)
+{
+        for (int i = 0; i < strlen(ligne); ++i)
+        {
+                if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
+                        return false;
+        }
+        return true;
+}
+
 static char **parceur(char *ligne, int *x)
 {
         assert(ligne != NULL);
-
+        if (space_only(ligne))
+        {
+                *x = 0;
+                return NULL;
+        }
         size_t len = strlen(ligne);
-        size_t nb_mots = 1;
+        size_t nb_mots = 0;
         for (size_t i = 0; i < len; ++i)
-                if (*(ligne + i) == ' ')
+                if (*(ligne + i) == ' ' && (*(ligne + i + 1) != ' ' && *(ligne + i + 1) != '\0'))
                 {
+
                         ++nb_mots;
                 }
+        if (!space_only(ligne) && nb_mots < 1)
+                ++nb_mots;
         *x = nb_mots;
         char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
         *ligne_decoupe = strtok(ligne, " ");
@@ -56,6 +73,7 @@ void cd(char *ref){
 	char *destination = malloc(100);
 
 	if(strcmp("cd", ref) == 0){
+		printf("test");
 		char *home = getenv("HOME");
 		if(home == NULL){
 			perror("HOME error");
@@ -71,6 +89,7 @@ void cd(char *ref){
 		fini = true;
 	}
 	else if(strcmp("-", ref) == 0){
+		printf("test2");
 		char *precedent = getenv("OLDPWD");
 		if(precedent == NULL){
 			perror("OLDPWD error");
@@ -109,11 +128,12 @@ int main(int argc, char const *argv[])
                         char **ligne = parceur(buf, &x);
                         for (int i = 0; i < x; ++i)
                         {
-				printf("---%i---%s\n",i,*(ligne + i));
 				if (strcmp(*(ligne + i), "pwd") == 0)
                                         printf("%s\n", pwd());
-				else if(strcmp(*(ligne + i), "cd")){
-					cd(*(ligne + i));
+				else if(strcmp(*(ligne + i), "cd") == 0){
+					printf("--------%s\n", *(ligne + i));
+					cd(*(ligne + i + 1));
+					i++;
 				}
                                 else{
                                         printf("%s\n", *(ligne + i));
