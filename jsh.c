@@ -12,7 +12,7 @@ static bool space_only(char *ligne)
 {
         for (int i = 0; i < strlen(ligne); ++i)
         {
-                if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
+                if (*(ligne + i) != ' ' && *(ligne + i) != '\n')
                         return false;
         }
         return true;
@@ -72,8 +72,7 @@ void cd(char *ref){
 	actuel = pwd();
 	char *destination = malloc(100);
 
-	if(strcmp("cd", ref) == 0){
-		printf("test");
+	if(strcmp(" ", ref) == 0){
 		char *home = getenv("HOME");
 		if(home == NULL){
 			perror("HOME error");
@@ -131,7 +130,6 @@ int main(int argc, char const *argv[])
 				if (strcmp(*(ligne + i), "pwd") == 0)
                                         printf("%s\n", pwd());
 				else if(strcmp(*(ligne + i), "cd") == 0){
-					printf("--------%s\n", *(ligne + i));
 					cd(*(ligne + i + 1));
 					i++;
 				}
