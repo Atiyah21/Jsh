@@ -8,18 +8,36 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+static bool space_only(char *ligne)
+{
+        for (int i = 0; i < strlen(ligne); ++i)
+        {
+                if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
+                        return false;
+        }
+        return true;
+}
+
 static char **parceur(char *ligne, int *x)
 {
         assert(ligne != NULL);
-
+        if (space_only(ligne))
+        {
+                *x = 0;
+                return NULL;
+        }
         size_t len = strlen(ligne);
-        size_t nb_mots = 1;
+        size_t nb_mots = 0;
         for (size_t i = 0; i < len; ++i)
-                if (*(ligne + i) == ' ')
+                if (*(ligne + i) == ' ' && (*(ligne + i + 1) != ' ' && *(ligne + i + 1) != '\0'))
                 {
+
                         ++nb_mots;
                 }
+        if (!space_only(ligne) && nb_mots<1)
+                ++nb_mots;
         *x = nb_mots;
+        printf("%ld\n", nb_mots);
         char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
         *ligne_decoupe = strtok(ligne, " ");
 
