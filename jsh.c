@@ -29,26 +29,71 @@ static char **parceur(char *ligne, int *x)
         return ligne_decoupe;
 }
 
-int pwd()
+char* pwd()
 {
 
         char *actuel = malloc(PATH_MAX);
         if (actuel == NULL)
         {
                 perror("pwd: Erreur malloc");
-                return 1;
+                return "";
         }
 
         if (getcwd(actuel, PATH_MAX) == NULL)
         {
                 perror("pwd: Erreur getcwd");
                 free(actuel);
-                return 1;
+                return "";
         }
 
-        printf("%s\n", actuel);
-        free(actuel);
-        return 0;
+        return actuel;
+}
+
+void cd(char *ref){
+	bool fini = false;
+	char *actuel = malloc(100);
+	actuel = pwd();
+	char *destination = malloc(100);
+
+	if(strcmp("cd", ref) == 0){
+		char *home = getenv("HOME");
+		if(home == NULL){
+			perror("HOME error");
+			exit(EXIT_FAILURE);
+		}
+		destination = home;
+	}	
+	else if (strcmp("..", ref) == 0){
+		if (chdir("..") != 0) {
+            		perror("chdir error");
+            		exit(EXIT_FAILURE);
+        	}
+		fini = true;
+	}
+	else if(strcmp("-", ref) == 0){
+		char *precedent = getenv("OLDPWD");
+		if(precedent == NULL){
+			perror("OLDPWD error");
+			exit(EXIT_FAILURE);
+		}
+		destination = precedent;
+	}
+
+	else{
+		destination = ref;
+	}
+
+
+	if(chdir(destination) != 0 && !fini){
+		perror("chdir error");
+		exit(EXIT_FAILURE);
+	}
+
+	if(setenv("OLDPWD", actuel, 1) != 0){
+		perror("maj OLDPWD");
+		exit(EXIT_FAILURE);
+	}
+
 }
 
 int main(int argc, char const *argv[])
@@ -64,11 +109,17 @@ int main(int argc, char const *argv[])
                         char **ligne = parceur(buf, &x);
                         for (int i = 0; i < x; ++i)
                         {
-                                if (strcmp(*(ligne + i), "pwd") == 0)
-                                        pwd();
-                                else
+				printf("---%i---%s\n",i,*(ligne + i));
+				if (strcmp(*(ligne + i), "pwd") == 0)
+                                        printf("%s\n", pwd());
+				else if(strcmp(*(ligne + i), "cd")){
+					cd(*(ligne + i));
+				}
+                                else{
                                         printf("%s\n", *(ligne + i));
-                        }
+                        
+				}
+			}
                 }
         }
         return 0;
