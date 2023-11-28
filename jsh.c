@@ -34,10 +34,9 @@ static char **parceur(char *ligne, int *x)
 
                         ++nb_mots;
                 }
-        if (!space_only(ligne) && nb_mots<1)
+        if (!space_only(ligne) && nb_mots < 1)
                 ++nb_mots;
         *x = nb_mots;
-        printf("%ld\n", nb_mots);
         char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
         *ligne_decoupe = strtok(ligne, " ");
 
