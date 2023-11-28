@@ -1,75 +1,89 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
 #include <assert.h>
 #include <limits.h>
-#include <readline/readline.h>
 #include <readline/history.h>
+#include <readline/readline.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-static char **parceur(char *ligne, int *x)
-{
-        assert(ligne != NULL);
+static int ret = 0;
+static int running = 1; // 0 si on a terminé
 
-        size_t len = strlen(ligne);
-        size_t nb_mots = 1;
-        for (size_t i = 0; i < len; ++i)
-                if (*(ligne + i) == ' ')
-                {
-                        ++nb_mots;
-                }
-        *x = nb_mots;
-        char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
-        *ligne_decoupe = strtok(ligne, " ");
+static char **parceur(char *ligne, int *x) {
+  assert(ligne != NULL);
 
-        for (size_t i = 1; i < nb_mots; ++i)
-                *(ligne_decoupe + i) = strtok(NULL, " ");
+  size_t len = strlen(ligne);
+  size_t nb_mots = 1;
+  for (size_t i = 0; i < len; ++i)
+    if (*(ligne + i) == ' ') {
+      ++nb_mots;
+    }
+  *x = nb_mots;
+  char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
+  *ligne_decoupe = strtok(ligne, " ");
 
-        return ligne_decoupe;
+  for (size_t i = 1; i < nb_mots; ++i)
+    *(ligne_decoupe + i) = strtok(NULL, " ");
+
+  return ligne_decoupe;
 }
 
-int pwd()
-{
+int pwd() {
 
-        char *actuel = malloc(PATH_MAX);
-        if (actuel == NULL)
-        {
-                perror("pwd: Erreur malloc");
-                return 1;
-        }
+  char *actuel = malloc(PATH_MAX);
+  if (actuel == NULL) {
+    perror("pwd: Erreur malloc");
+    return 1;
+  }
 
-        if (getcwd(actuel, PATH_MAX) == NULL)
-        {
-                perror("pwd: Erreur getcwd");
-                free(actuel);
-                return 1;
-        }
+  if (getcwd(actuel, PATH_MAX) == NULL) {
+    perror("pwd: Erreur getcwd");
+    free(actuel);
+    return 1;
+  }
 
-        printf("%s\n", actuel);
-        free(actuel);
-        return 0;
+  printf("%s\n", actuel);
+  free(actuel);
+  return 0;
 }
 
-int main(int argc, char const *argv[])
-{
-        int x;
-        rl_initialize();
-        // rl_outstream = stderr;
-        while (1)
-        {
-                char *buf = readline(">");
-                if (*buf != '\0')
-                {
-                        char **ligne = parceur(buf, &x);
-                        for (int i = 0; i < x; ++i)
-                        {
-                                if (strcmp(*(ligne + i), "pwd") == 0)
-                                        pwd();
-                                else
-                                        printf("%s\n", *(ligne + i));
-                        }
-                }
-        }
-        return 0;
+int execute(int argc, char *argv[]) {
+  if (strcmp(argv[0], "pwd") == 0)
+    return pwd();
+  if (strcmp(argv[0], "cd") == 0)
+    return 0;
+  if (strcmp(argv[0], "?") == 0) {
+    printf("la valeur de retour est %d \n", ret);
+    return ret;
+  }
+  if (strcmp(argv[0], "exit") == 0)
+    running = 0;
+  if (argc > 1) {
+    return atoi(argv[1]);
+  } else
+    return ret;
+  switch (fork()) {
+  case 0:
+    execvp(argv[0], argv + 1);
+  default:
+    return WEXITSTATUS(wait(NULL));
+  }
+}
+
+int main(int argc, char const *argv[]) {
+  int x;
+  rl_initialize();
+  // rl_outstream = stderr;
+  while (running) {
+    char *buf = readline(">");
+    if (*buf != '\0') {
+      char **ligne = parceur(buf, &x);
+      ret = execute(x, ligne);
+    }
+  }
+  exit(ret);
+  return 0;
 }
