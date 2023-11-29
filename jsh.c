@@ -46,7 +46,7 @@ static char **parceur(char *ligne, int *x) {
   return ligne_decoupe;
 }
 
-int pwd(char *actuel) {
+int pwd(char *actuel, int affiche) {// 0 pour afficher, 1 pour ne pas afficher 
 
   actuel = malloc(PATH_MAX);
   if (actuel == NULL) {
@@ -59,8 +59,8 @@ int pwd(char *actuel) {
     free(actuel);
     return 1;
   }
-
-  printf("%s\n", actuel);
+  if(affiche)
+    printf("%s\n", actuel);
   free(actuel);
   return 0;
 }
@@ -68,7 +68,7 @@ int pwd(char *actuel) {
 int cd(char *ref) {
   bool fini = false;
   char *actuel = malloc(100);
-  pwd(actuel);
+  pwd(actuel,0);
   char *destination = malloc(100);
 
   if (ref == NULL) {
@@ -111,18 +111,18 @@ int cd(char *ref) {
 }
 
 int execute(int argc, char *argv[]) {
-  if (strcmp(argv[0], "pwd") == 0)
+  if (strcmp(argv[0], "pwd") == 0) {
     if (argc != 1) {
-      printf("too many arguments");
+      printf("too many arguments\n");
       return 1;
     }
-	char *actuel = malloc(100);
-	return pwd(actuel);	
-	
+    char *actuel = malloc(100);
+    return pwd(actuel,1);
+  }
 
   if (strcmp(argv[0], "cd") == 0) {
     if (argc > 2) {
-      printf("too many arguments");
+      printf("too many arguments\n");
       return 1;
     }
     int tmp;
@@ -135,15 +135,15 @@ int execute(int argc, char *argv[]) {
 
   if (strcmp(argv[0], "?") == 0) {
     if (argc != 1) {
-      printf("too many arguments");
+      printf("too many arguments\n");
       return 1;
     }
     printf("la valeur de retour est %d \n", ret);
     return ret;
   }
   if (strcmp(argv[0], "exit") == 0) {
-    if (argc < 3) {
-      printf("too many arguments");
+    if (argc > 3) {
+      printf("too many arguments\n");
       return 1;
     }
     running = 0;
@@ -169,9 +169,9 @@ int main(int argc, char const *argv[]) {
     if (*buf != '\0') {
       char **ligne = parceur(buf, &x);
       ret = execute(x, ligne);
-      for (int i = 0; i < x; i++)
-        free(ligne[i]);
-      free(ligne);
+//      for (int i = 0; i < x; i++)
+//        free(ligne[i]);
+//      free(ligne);
     }
   }
   exit(ret);
