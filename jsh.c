@@ -65,64 +65,84 @@ int pwd() {
   return 0;
 }
 
-void cd(char *ref){
-	bool fini = false;
-	char *actuel = malloc(100);
-	actuel = pwd();
-	char *destination = malloc(100);
+void cd(char *ref) {
+  bool fini = false;
+  char *actuel = malloc(100);
+  actuel = pwd();
+  char *destination = malloc(100);
 
-	if(strcmp(" ", ref) == 0){
-		char *home = getenv("HOME");
-		if(home == NULL){
-			perror("HOME error");
-			exit(EXIT_FAILURE);
-		}
-		destination = home;
-	}	
-	else if (strcmp("..", ref) == 0){
-		if (chdir("..") != 0) {
-            		perror("chdir error");
-            		exit(EXIT_FAILURE);
-        	}
-		fini = true;
-	}
-	else if(strcmp("-", ref) == 0){
-		printf("test2");
-		char *precedent = getenv("OLDPWD");
-		if(precedent == NULL){
-			perror("OLDPWD error");
-			exit(EXIT_FAILURE);
-		}
-		destination = precedent;
-	}
+  if (strcmp(" ", ref) == 0) {
+    char *home = getenv("HOME");
+    if (home == NULL) {
+      perror("HOME error");
+      exit(EXIT_FAILURE);
+    }
+    destination = home;
+  } else if (strcmp("..", ref) == 0) {
+    if (chdir("..") != 0) {
+      perror("chdir error");
+      exit(EXIT_FAILURE);
+    }
+    fini = true;
+  } else if (strcmp("-", ref) == 0) {
+    printf("test2");
+    char *precedent = getenv("OLDPWD");
+    if (precedent == NULL) {
+      perror("OLDPWD error");
+      exit(EXIT_FAILURE);
+    }
+    destination = precedent;
+  }
 
-	else{
-		destination = ref;
-	}
+  else {
+    destination = ref;
+  }
 
+  if (chdir(destination) != 0 && !fini) {
+    perror("chdir error");
+    exit(EXIT_FAILURE);
+  }
 
-	if(chdir(destination) != 0 && !fini){
-		perror("chdir error");
-		exit(EXIT_FAILURE);
-	}
-
-	if(setenv("OLDPWD", actuel, 1) != 0){
-		perror("maj OLDPWD");
-		exit(EXIT_FAILURE);
-	}
-
+  if (setenv("OLDPWD", actuel, 1) != 0) {
+    perror("maj OLDPWD");
+    exit(EXIT_FAILURE);
+  }
 }
 
 int execute(int argc, char *argv[]) {
   if (strcmp(argv[0], "pwd") == 0)
-    return pwd();
-  if (strcmp(argv[0], "cd") == 0)
-    return 0;
+    if (argc != 1) {
+      printf("too many arguments");
+      return 1;
+    }
+  return pwd();
+
+  if (strcmp(argv[0], "cd") == 0) {
+    if (argc > 2) {
+      printf("too many arguments");
+      return 1;
+    }
+    int tmp;
+    if (argc == 1)
+      tmp = cd(NULL);
+    else if (argc == 2)
+      tmp = cd(argv[1]);
+    return tmp;
+  }
+
   if (strcmp(argv[0], "?") == 0) {
+    if (argc != 1) {
+      printf("too many arguments");
+      return 1;
+    }
     printf("la valeur de retour est %d \n", ret);
     return ret;
   }
   if (strcmp(argv[0], "exit") == 0) {
+    if (argc < 3) {
+      printf("too many arguments");
+      return 1;
+    }
     running = 0;
     if (argc > 1) {
       return atoi(argv[1]);
@@ -147,9 +167,9 @@ int main(int argc, char const *argv[]) {
     if (*buf != '\0') {
       char **ligne = parceur(buf, &x);
       ret = execute(x, ligne);
-        for(int i =0 ; i<x;i++)
-          free(ligne[i]);
-        free(ligne);
+      for (int i = 0; i < x; i++)
+        free(ligne[i]);
+      free(ligne);
     }
   }
   exit(ret);
