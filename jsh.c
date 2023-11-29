@@ -85,7 +85,6 @@ int cd(char *ref) {
     }
     fini = true;
   } else if (strcmp("-", ref) == 0) {
-    printf("test2");
     char *precedent = getenv("OLDPWD");
     if (precedent == NULL) {
       perror("OLDPWD error");
