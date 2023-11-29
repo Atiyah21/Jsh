@@ -12,7 +12,7 @@ static bool space_only(char *ligne)
 {
         for (int i = 0; i < strlen(ligne); ++i)
         {
-                if (*(ligne + i) != ' ' && *(ligne + i) != '\n')
+                if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
                         return false;
         }
         return true;
@@ -27,15 +27,14 @@ static char **parceur(char *ligne, int *x)
                 return NULL;
         }
         size_t len = strlen(ligne);
-        size_t nb_mots = 0;
+        size_t nb_mots = 1;
+        if (*(ligne) ==' ')nb_mots = 0; 
         for (size_t i = 0; i < len; ++i)
                 if (*(ligne + i) == ' ' && (*(ligne + i + 1) != ' ' && *(ligne + i + 1) != '\0'))
                 {
 
                         ++nb_mots;
                 }
-        if (!space_only(ligne) && nb_mots < 1)
-                ++nb_mots;
         *x = nb_mots;
         char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
         *ligne_decoupe = strtok(ligne, " ");
@@ -131,10 +130,9 @@ int main(int argc, char const *argv[])
                                         printf("%s\n", pwd());
 				else if(strcmp(*(ligne + i), "cd") == 0){
 					cd(*(ligne + i + 1));
-					i++;
 				}
                                 else{
-                                        printf("%s\n", *(ligne + i+ 1));
+                                        printf("%s\n", *(ligne + i));
                         
 				}
 			}
