@@ -65,6 +65,54 @@ int pwd() {
   return 0;
 }
 
+void cd(char *ref){
+	bool fini = false;
+	char *actuel = malloc(100);
+	actuel = pwd();
+	char *destination = malloc(100);
+
+	if(strcmp(" ", ref) == 0){
+		char *home = getenv("HOME");
+		if(home == NULL){
+			perror("HOME error");
+			exit(EXIT_FAILURE);
+		}
+		destination = home;
+	}	
+	else if (strcmp("..", ref) == 0){
+		if (chdir("..") != 0) {
+            		perror("chdir error");
+            		exit(EXIT_FAILURE);
+        	}
+		fini = true;
+	}
+	else if(strcmp("-", ref) == 0){
+		printf("test2");
+		char *precedent = getenv("OLDPWD");
+		if(precedent == NULL){
+			perror("OLDPWD error");
+			exit(EXIT_FAILURE);
+		}
+		destination = precedent;
+	}
+
+	else{
+		destination = ref;
+	}
+
+
+	if(chdir(destination) != 0 && !fini){
+		perror("chdir error");
+		exit(EXIT_FAILURE);
+	}
+
+	if(setenv("OLDPWD", actuel, 1) != 0){
+		perror("maj OLDPWD");
+		exit(EXIT_FAILURE);
+	}
+
+}
+
 int execute(int argc, char *argv[]) {
   if (strcmp(argv[0], "pwd") == 0)
     return pwd();
