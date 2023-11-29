@@ -46,9 +46,9 @@ static char **parceur(char *ligne, int *x) {
   return ligne_decoupe;
 }
 
-int pwd() {
+int pwd(char *actuel) {
 
-  char *actuel = malloc(PATH_MAX);
+  actuel = malloc(PATH_MAX);
   if (actuel == NULL) {
     perror("pwd: Erreur malloc");
     return 1;
@@ -65,23 +65,23 @@ int pwd() {
   return 0;
 }
 
-void cd(char *ref) {
+int cd(char *ref) {
   bool fini = false;
   char *actuel = malloc(100);
-  actuel = pwd();
+  pwd(actuel);
   char *destination = malloc(100);
 
-  if (strcmp(" ", ref) == 0) {
+  if (ref == NULL) {
     char *home = getenv("HOME");
     if (home == NULL) {
       perror("HOME error");
-      exit(EXIT_FAILURE);
+      return 1;
     }
     destination = home;
   } else if (strcmp("..", ref) == 0) {
     if (chdir("..") != 0) {
       perror("chdir error");
-      exit(EXIT_FAILURE);
+      return 1;
     }
     fini = true;
   } else if (strcmp("-", ref) == 0) {
@@ -89,7 +89,7 @@ void cd(char *ref) {
     char *precedent = getenv("OLDPWD");
     if (precedent == NULL) {
       perror("OLDPWD error");
-      exit(EXIT_FAILURE);
+      return 1;
     }
     destination = precedent;
   }
@@ -100,13 +100,14 @@ void cd(char *ref) {
 
   if (chdir(destination) != 0 && !fini) {
     perror("chdir error");
-    exit(EXIT_FAILURE);
+    return 1;
   }
 
   if (setenv("OLDPWD", actuel, 1) != 0) {
     perror("maj OLDPWD");
-    exit(EXIT_FAILURE);
+    return 1;
   }
+  return 0;
 }
 
 int execute(int argc, char *argv[]) {
@@ -115,7 +116,9 @@ int execute(int argc, char *argv[]) {
       printf("too many arguments");
       return 1;
     }
-  return pwd();
+	char *actuel = malloc(100);
+	return pwd(actuel);	
+	
 
   if (strcmp(argv[0], "cd") == 0) {
     if (argc > 2) {
@@ -160,7 +163,6 @@ int execute(int argc, char *argv[]) {
 int main(int argc, char const *argv[]) {
   int x;
   rl_initialize();
-  char **ligne;
   // rl_outstream = stderr;
   while (running) {
     char *buf = readline(">");
