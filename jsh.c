@@ -99,12 +99,11 @@ int main(int argc, char const *argv[]) {
     if (*buf != '\0') {
       char **ligne = parceur(buf, &x);
       ret = execute(x, ligne);
+        for(int i =0 ; i<x;i++)
+          free(ligne[i]);
+        free(ligne);
     }
   }
-  
-  for(int i =0 ; i<x;i++)
-        free(*(ligne +i));
-free(ligne);
   exit(ret);
   return 0;
 }
