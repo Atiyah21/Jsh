@@ -52,3 +52,6 @@ Mkfile.old
 dkms.conf
 .sy5-2023-2024-projet-jsh-autotests.nosync
 .vscode/tasks.json
+.vscode/settings.json
+.vscode/launch.json
+.gitignore
