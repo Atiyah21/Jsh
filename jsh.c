@@ -124,7 +124,7 @@ int execute(int argc, char **argv)
       return 1;
     }
     char *actuel = malloc(100);
-    return pwd(actuel, 1);
+    return  pwd(actuel, 1);
   }
 
   if (strcmp(argv[0], "cd") == 0)
@@ -147,7 +147,7 @@ int execute(int argc, char **argv)
         tmp = cd(prev_directory);
         getcwd(prev_directory, PATH_MAX);
       }
-      else if (strcmp(argv[1], "$HOME") == 0)
+      else if (strcmp(argv[1], "HOME") == 0)
       {
         getcwd(prev_directory, PATH_MAX);
         tmp = cd(NULL);
@@ -247,10 +247,11 @@ int main(int argc, char const *argv[])
         }
         ret = execute(nbw, ligne);
         //  printf("%d\n",ret);
-        for (int i = 0; i < nbw + 1; i++)
-          free(ligne[i]);
-        free(ligne);
+        //for (int i = 0; i < nbw + 1; i++)
+          //free(ligne[i]);
+        //free(ligne);
       }
+      free(ligne);
     }
   }
   return ret;
