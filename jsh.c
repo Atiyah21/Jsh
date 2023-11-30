@@ -1,3 +1,4 @@
+#include <linux/limits.h>
 #include <stdio.h>
 #include <assert.h>
 #include <limits.h>
@@ -8,11 +9,12 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "commandes.h"
 
 static int ret = 0;
-static int running = 1; // 0 si on a terminé
+static char prev_directory[PATH_MAX];
 
-static bool space_only(char *ligne) {
+bool space_only(char *ligne) {
   for (int i = 0; i < strlen(ligne); ++i) {
     if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
       return false;
@@ -20,103 +22,96 @@ static bool space_only(char *ligne) {
   return true;
 }
 
-static char **parceur(char *ligne, int *x) {
-  assert(ligne != NULL);
-  if (space_only(ligne)) {
-    *x = 0;
+
+
+char *del_space(char *str) {
+  char *nv = NULL;
+  size_t len = strlen(str);
+  size_t deb = 0;
+  int fin = len - 1;
+
+  while (isspace(str[deb]) && str[deb] != '\0' && deb < len)
+    deb++;
+  while (fin >= 0 && isspace(str[fin]))
+    fin--;
+
+  if (fin == -1) {
+    nv = malloc(sizeof(char));
+    assert(nv != NULL); // On vérifie que l'allocation s'est bien passée.
+    nv[0] = '\0';
+    return nv;
+  }
+
+  nv = malloc(sizeof(char) * (fin - deb + 2));
+  assert(nv != NULL); // On vérifie que l'allocation s'est bien passée.
+  int i;
+  for (i = 0; i <= fin - deb; i++)
+    nv[i] = str[deb + i];
+  nv[i] = '\0';
+  return nv;
+}
+
+int nbwords(char *str) {
+  int c = 0; // Compteur du nombre de mots.
+  bool mot = false;
+  for (int i = 0; str[i] != '\0'; i++) {
+    if (!isspace(str[i])) {
+      if (!mot) // Si on ne regarde pas déjà un mot, alors on incrémente le
+                // compteur de mots.
+      {
+        mot = true;
+        c++;
+      }
+    } else
+      mot = false;
+  }
+  return c;
+}
+
+char *next(char *str) {
+  if (str == NULL) // Si la chaine 'str' est NULL
     return NULL;
-  }
-  size_t len = strlen(ligne);
-  size_t nb_mots = 1;
-  if (*(ligne) == ' ')
-    nb_mots = 0;
-  for (size_t i = 0; i < len; ++i)
-    if (*(ligne + i) == ' ' &&
-        (*(ligne + i + 1) != ' ' && *(ligne + i + 1) != '\0')) {
-
-      ++nb_mots;
-    }
-  *x = nb_mots;
-  char **ligne_decoupe = malloc(nb_mots * sizeof(char *));
-  *ligne_decoupe = strtok(ligne, " ");
-
-  for (size_t i = 1; i < nb_mots; ++i)
-    *(ligne_decoupe + i) = strtok(NULL, " ");
-
-  return ligne_decoupe;
+  size_t i = 0;
+  while (!(isspace(str[i]) || str[i] == '\0'))
+    ++i;
+  char *t = malloc(sizeof(char) * i + 1);
+  assert(t != NULL); // On vérifie que l'allocation s'est bien passée.
+  if (i == strlen(str))
+    return strcpy(t, str);
+  memcpy(t, str, i);
+  t[i] = '\0';
+  return t;
 }
 
-int pwd(char *actuel, int affiche) {// 0 pour afficher, 1 pour ne pas afficher 
-
-  actuel = malloc(PATH_MAX);
-  if (actuel == NULL) {
-    perror("pwd: Erreur malloc");
-    return 1;
+char **split(char *ligne, int *nbw) {
+  if(space_only(ligne)) return NULL;
+  char *nvligne = del_space(ligne); // on efface les espaces
+  *nbw = nbwords(nvligne);          // nombre de mots
+  char **tmp = malloc((*nbw) * sizeof(char *)+1);
+  if (nvligne == NULL) {
+    puts("Erreur : L'argument est NULL.");
+    exit(-1);
   }
-
-  if (getcwd(actuel, PATH_MAX) == NULL) {
-    perror("pwd: Erreur getcwd");
-    free(actuel);
-    return 1;
+  int i = 0;
+  for (int j = 0; j < *nbw; j++) {
+    tmp[j] = next(nvligne + i);
+    i = i + (strlen(tmp[j]) + 1);
   }
-  if(affiche)
-    printf("%s\n", actuel);
-  free(actuel);
-  return 0;
+  tmp[*nbw]=NULL;
+  free(nvligne);
+  return tmp;
 }
 
-int cd(char *ref) {
-  bool fini = false;
-  char *actuel = malloc(100);
-  pwd(actuel,0);
-  char *destination = malloc(100);
 
-  if (ref == NULL) {
-    char *home = getenv("HOME");
-    if (home == NULL) {
-      perror("HOME error");
-      return 1;
-    }
-    destination = home;
-  } else if (strcmp("..", ref) == 0) {
-    if (chdir("..") != 0) {
-      perror("chdir error");
-      return 1;
-    }
-    fini = true;
-  } else if (strcmp("-", ref) == 0) {
-    char *precedent = getenv("OLDPWD");
-    if (precedent == NULL) {
-      perror("OLDPWD error");
-      return 1;
-    }
-    destination = precedent;
-  }
 
-  else {
-    destination = ref;
-  }
-
-  if (chdir(destination) != 0 && !fini) {
-    perror("chdir error");
-    return 1;
-  }
-
-  if (setenv("OLDPWD", actuel, 1) != 0) {
-    perror("maj OLDPWD");
-    return 1;
-  }
-  return 0;
-}
-
-int execute(int argc, char *argv[]) {
+int execute(int argc, char **argv) {
   if (strcmp(argv[0], "pwd") == 0) {
     if (argc != 1) {
       printf("too many arguments\n");
       return 1;
     }
     char *actuel = malloc(100);
-    return pwd(actuel,1);
+    return pwd(actuel, 1);
   }
 
   if (strcmp(argv[0], "cd") == 0) {
@@ -125,10 +120,21 @@ int execute(int argc, char *argv[]) {
       return 1;
     }
     int tmp;
-    if (argc == 1)
+    if (argc == 1){
+      getcwd(prev_directory, PATH_MAX);
       tmp = cd(NULL);
-    else if (argc == 2)
-      tmp = cd(argv[1]);
+    }else if (argc == 2){
+      if(strcmp(argv[1],"-")==0){
+        tmp = cd(prev_directory);
+        getcwd(prev_directory, PATH_MAX);
+      }else if (strcmp(argv[1],"$HOME")==0){
+        getcwd(prev_directory, PATH_MAX);
+        tmp = cd(NULL);
+      }else{ 
+        getcwd(prev_directory, PATH_MAX);
+        tmp = cd(argv[1]);  
+      }
+    }
     return tmp;
   }
 
@@ -137,15 +143,14 @@ int execute(int argc, char *argv[]) {
       printf("too many arguments\n");
       return 1;
     }
-    printf("la valeur de retour est %d \n", ret);
-    return ret;
+    printf("%d\n", ret);
+    return 0;
   }
   if (strcmp(argv[0], "exit") == 0) {
     if (argc > 3) {
       printf("too many arguments\n");
       return 1;
     }
-    running = 0;
     if (argc > 1) {
       return atoi(argv[1]);
     } else
@@ -153,26 +158,63 @@ int execute(int argc, char *argv[]) {
   }
   switch (fork()) {
   case 0:
-    execvp(argv[0], argv + 1);
+    execvp(argv[0],argv);
   default:
-    return WEXITSTATUS(wait(NULL));
+    int x;
+    wait(&x);
+    return WEXITSTATUS(x);
   }
 }
 
+char *prompt() {
+  char *s = malloc(30 * sizeof(char));
+  char *actuel = malloc(PATH_MAX);
+  getcwd(actuel, PATH_MAX);
+  size_t taille_chemin = strlen(actuel);
+  s[0] = '\0';
+  strcat(s, "\033[91m[0]\033[36m");
+  if (taille_chemin > 25) {
+    strcat(s, "...");
+    strcat(s, (actuel + taille_chemin - 22));
+  } else {
+    strcat(s, actuel);
+  }
+  strcat(s, "\033[00m$ ");
+  free(actuel);
+  return s;
+}
+
 int main(int argc, char const *argv[]) {
-  int x;
   rl_initialize();
-  // rl_outstream = stderr;
-  while (running) {
-    char *buf = readline(">");
+  rl_outstream = stderr;
+  while (1) {
+    char *s = prompt();
+    char *buf = readline(s);
+    add_history(buf);
+    free(s);
+    if (buf == NULL)
+      exit(0);
     if (*buf != '\0') {
-      char **ligne = parceur(buf, &x);
-      ret = execute(x, ligne);
-//      for (int i = 0; i < x; i++)
-//        free(ligne[i]);
-//      free(ligne);
+      int nbw;
+      char **ligne = split(buf, &nbw);
+      if (ligne != NULL) {
+        if (strcmp(ligne[0], "exit")==0) {
+          if (nbw == 2)
+            ret = atoi(ligne[1]);
+          for (int i = 0; i < nbw; i++)
+            free(ligne[i]);
+          free(ligne);
+          break;
+        }
+        ret = execute(nbw, ligne);
+        //  printf("%d\n",ret);
+        for (int i = 0; i < nbw+1; i++)
+          free(ligne[i]);
+        free(ligne);
+      }
+            
     }
   }
-  exit(ret);
-  return 0;
+
+  return ret;
 }
