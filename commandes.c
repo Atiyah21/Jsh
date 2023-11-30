@@ -10,15 +10,15 @@
 
 int pwd(char *actuel, int affiche) {// 0 pour afficher, 1 pour ne pas afficher 
 
-  actuel = malloc(PATH_MAX);
+  /*actuel = malloc(PATH_MAX);
   if (actuel == NULL) {
     perror("pwd: Erreur malloc");
     return 1;
-  }
+  }*/
 
   if (getcwd(actuel, PATH_MAX) == NULL) {
     perror("pwd: Erreur getcwd");
-    free(actuel);
+    //free(actuel);
     return 1;
   }
   if(affiche)
@@ -31,7 +31,7 @@ int cd(char *ref) {
   bool fini = false;
   char *actuel = malloc(100);
   pwd(actuel,0);
-  char *destination = malloc(100);
+  char destination[100];
 
   if (ref == NULL) {
     char *home = getenv("HOME");
@@ -39,7 +39,7 @@ int cd(char *ref) {
       perror("HOME error");
       return 1;
     }
-    destination = home;
+   strncpy(destination, home, sizeof(destination));
   } else if (strcmp("..", ref) == 0) {
     if (chdir("..") != 0) {
       perror("chdir error");
@@ -53,11 +53,12 @@ int cd(char *ref) {
       perror("OLDPWD error");
       return 1;
     }
-    destination = precedent;
+    strncpy(destination, precedent, sizeof(destination));
   }
 
   else {
-    destination = ref;
+	  strncpy(destination, ref, sizeof(destination));
+
   }
 
   if (chdir(destination) != 0 && !fini) {
