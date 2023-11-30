@@ -1,11 +1,9 @@
 CC= gcc
 CFLAGS = -g -Wall
-DEPS = jsh.h
+DEPS = commandes.h
 EXEC = jsh
-O = jsh.o
 
-build : $(O)
-	gcc -Wall -o jsh jsh.c -lreadline
+build : ${EXEC} 
 
 run : build
 	./$(EXEC)
@@ -15,4 +13,7 @@ clean :
 
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $<
+
+jsh : jsh.o commandes.o -lreadline
+	$(CC) $(CFLAGS) -o $@ $^
 
