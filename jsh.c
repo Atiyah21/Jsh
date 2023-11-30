@@ -159,7 +159,7 @@ int execute(int argc, char **argv) {
   switch (fork()) {
   case 0:
     execvp(argv[0],argv);
-  default:
+  default:;
     int x;
     wait(&x);
     return WEXITSTATUS(x);
@@ -216,5 +216,4 @@ int main(int argc, char const *argv[]) {
     }
   }
 
-  return ret;
 }
