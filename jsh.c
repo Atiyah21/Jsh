@@ -229,7 +229,7 @@ int main(int argc, char const *argv[])
     add_history(buf);
     free(s);
     if (buf == NULL)
-      exit(0);
+      exit(ret);
     if (*buf != '\0')
     {
       int nbw;
