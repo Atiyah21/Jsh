@@ -12,108 +12,10 @@
 #include "commandes.h"
 
 static int ret = 0;
-char *s = NULL;
+// char *s = NULL;
 int pid;
 static char prev_directory[PATH_MAX];
 
-bool space_only(char *ligne)
-{
-  for (int i = 0; i < strlen(ligne); ++i)
-  {
-    if (*(ligne + i) != ' ' && *(ligne + i) != '\0')
-      return false;
-  }
-  return true;
-}
-
-char *del_space(char *str)
-{
-  char *nv = NULL;
-  size_t len = strlen(str);
-  size_t deb = 0;
-  int fin = len - 1;
-
-  while (isspace(str[deb]) && str[deb] != '\0' && deb < len)
-    deb++;
-  while (fin >= 0 && isspace(str[fin]))
-    fin--;
-
-  if (fin == -1)
-  {
-    nv = malloc(sizeof(char));
-    assert(nv != NULL); // On vérifie que l'allocation s'est bien passée.
-    nv[0] = '\0';
-    return nv;
-  }
-
-  nv = malloc(sizeof(char) * (fin - deb + 2));
-  assert(nv != NULL); // On vérifie que l'allocation s'est bien passée.
-  int i;
-  for (i = 0; i <= fin - deb; i++)
-    nv[i] = str[deb + i];
-  nv[i] = '\0';
-  return nv;
-}
-
-int nbwords(char *str)
-{
-  int c = 0; // Compteur du nombre de mots.
-  bool mot = false;
-  for (int i = 0; str[i] != '\0'; i++)
-  {
-    if (!isspace(str[i]))
-    {
-      if (!mot) // Si on ne regarde pas déjà un mot, alors on incrémente le
-                // compteur de mots.
-      {
-        mot = true;
-        c++;
-      }
-    }
-    else
-      mot = false;
-  }
-  return c;
-}
-
-char *next(char *str)
-{
-  if (str == NULL) // Si la chaine 'str' est NULL
-    return NULL;
-  size_t i = 0;
-  while (!(isspace(str[i]) || str[i] == '\0'))
-    ++i;
-  char *t = malloc(sizeof(char) * i + 1);
-  assert(t != NULL); // On vérifie que l'allocation s'est bien passée.
-  if (i == strlen(str))
-    return strcpy(t, str);
-  memcpy(t, str, i);
-  t[i] = '\0';
-  return t;
-}
-
-char **split(char *ligne, int *nbw)
-{
-  if (space_only(ligne))
-    return NULL;
-  char *nvligne = del_space(ligne); // on efface les espaces
-  *nbw = nbwords(nvligne);          // nombre de mots
-  char **tmp = malloc((*nbw) * sizeof(char *) + 1);
-  if (nvligne == NULL)
-  {
-    puts("Erreur : L'argument est NULL.");
-    exit(-1);
-  }
-  int i = 0;
-  for (int j = 0; j < *nbw; j++)
-  {
-    tmp[j] = next(nvligne + i);
-    i = i + (strlen(tmp[j]) + 1);
-  }
-  tmp[*nbw] = NULL;
-  free(nvligne);
-  return tmp;
-}
 
 int execute(int argc, char **argv)
 {
@@ -197,6 +99,62 @@ int execute(int argc, char **argv)
   }
 }
 
+int split(char* str,int* nbw,char ** res){
+    *nbw=0;
+
+    int lim=128;
+    char *token=strtok(str, " ");
+    while (token!=NULL) {
+      if(*nbw==lim){
+        printf("Erreur prompt trop long");
+        return -1;
+      }
+        res[*nbw]=token;
+        token = strtok(NULL, " ");
+        (*nbw)=(*nbw)+1;
+    }
+    res[*nbw] = NULL;
+    return 0;
+}
+
+int redirection(char** ligne){
+  // int i=0;
+  for (int i=0;ligne[i]!=NULL;i++){
+    if (strcmp(ligne[i],">")==0){
+      if(ligne[i+1]==NULL){
+        printf("Missing arguement");
+        return -1;
+      }
+    }else if (strcmp(ligne[i],"<")==0){
+      if(ligne[i+1]==NULL){
+        printf("Missing arguement");
+        return -1;
+      }
+    }else if (strcmp(ligne[i],">>")==0){
+      if(ligne[i+1]==NULL){
+        printf("Missing arguement");
+        return -1;
+      }
+    }else if (strcmp(ligne[i],"2>")==0){
+      if(ligne[i+1]==NULL){
+        printf("Missing arguement");
+        return -1;
+      }
+    }else if (strcmp(ligne[i],"2>>")==0){
+      if(ligne[i+1]==NULL){
+        printf("Missing arguement");
+        return -1;
+      }
+    }else if (strcmp(ligne[i],"2>|")==0){
+      if(ligne[i+1]==NULL){
+        printf("Missing arguement");
+        return -1;
+      }
+    }else i++;
+  }
+  return 0;
+}
+
 void prompt(char *pro)
 {
   char *actuel = malloc(PATH_MAX);
@@ -219,53 +177,49 @@ int main(int argc, char const *argv[])
 {
   rl_initialize();
   rl_outstream = stderr;
-  s = malloc(256);
+  char s[256];
+  // = malloc(256);
   char *buf = NULL;
-  char **ligne;
-  int nbw;
+  // char **ligne=calloc(128, sizeof(char*));
+  int nbw=0;
   while (1)
   {
     prompt(s);
+    if (buf != NULL)
+    {
+      free(buf);
+    }
     buf = readline(s);
     add_history(buf);
     if (buf == NULL)
       break;
     if (*buf != '\0')
     {
-      ligne = split(buf, &nbw);
+      char *ligne[128];
+      char str[strlen(buf)+1];
+      strcpy(str,buf);
+      split(str, &nbw,ligne);
+      // if(nbw > 1)
+      //   redirection(ligne);
       if (ligne != NULL)
       {
         if (strcmp(ligne[0], "exit") == 0)
         {
           if (nbw == 2)
             ret = atoi(ligne[1]);
-          for (int i = 0; i < nbw; i++)
-            free(ligne[i]);
-          free(ligne);
-          free(s);
-          if (buf != NULL)
-          {
-            free(buf);
-          }
-          return ret;
-        }
-        else
-        {
+          goto exit;
+        }else{
           ret = execute(nbw, ligne);
-          //  printf("%d\n",ret);
         }
       }
     }
+  }
+
+  exit : 
     if (buf != NULL)
     {
       free(buf);
     }
-  }
-  for (int i = 0; i < nbw + 1; i++)
-  {
-    free(ligne[i]);
-  }
-  free(ligne);
-  free(s);
+  // free(s);
   return ret;
 }
