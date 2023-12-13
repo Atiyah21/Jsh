@@ -124,7 +124,7 @@ int execute(int argc, char **argv)
       return 1;
     }
     char *actuel = malloc(100);
-    return  pwd(actuel, 1);
+    return pwd(actuel, 1);
   }
 
   if (strcmp(argv[0], "cd") == 0)
@@ -198,22 +198,20 @@ int execute(int argc, char **argv)
 
 char *prompt()
 {
-  char *s = malloc(30 * sizeof(char));
+  char *s = malloc(33 * sizeof(char));
   char *actuel = malloc(PATH_MAX);
   getcwd(actuel, PATH_MAX);
   size_t taille_chemin = strlen(actuel);
-  s[0] = '\0';
-  strcat(s, "\033[91m[0]\033[36m");
+  //s[0] = '\0';
   if (taille_chemin > 25)
   {
-    strcat(s, "...");
-    strcat(s, (actuel + taille_chemin - 22));
+
+    sprintf(s, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", 0, (actuel + taille_chemin - 22));
   }
   else
   {
-    strcat(s, actuel);
+    sprintf(s, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ",0, actuel);
   }
-  strcat(s, "\033[00m$ ");
   free(actuel);
   return s;
 }
@@ -247,9 +245,9 @@ int main(int argc, char const *argv[])
         }
         ret = execute(nbw, ligne);
         //  printf("%d\n",ret);
-        //for (int i = 0; i < nbw + 1; i++)
-          //free(ligne[i]);
-        //free(ligne);
+        // for (int i = 0; i < nbw + 1; i++)
+        // free(ligne[i]);
+        // free(ligne);
       }
       free(ligne);
     }

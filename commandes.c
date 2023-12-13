@@ -18,19 +18,19 @@ int pwd(char *actuel, int affiche) {// 0 pour afficher, 1 pour ne pas afficher
 
   if (getcwd(actuel, PATH_MAX) == NULL) {
     perror("pwd: Erreur getcwd");
-    //free(actuel);
+    free(actuel);
     return 1;
   }
   if(affiche)
     printf("%s\n", actuel);
-  //free(actuel);
+  free(actuel);
   return 0;
 }
 
 int cd(char *ref) {
   bool fini = false;
-  char *actuel = malloc(100);
-  pwd(actuel,0);
+  char *actuel = malloc(PATH_MAX);
+  getcwd(actuel, PATH_MAX);
   char destination[100];
 
   if (ref == NULL) {
@@ -70,5 +70,6 @@ int cd(char *ref) {
     perror("maj OLDPWD");
     return 1;
   }
+  free(actuel);
   return 0;
 }
