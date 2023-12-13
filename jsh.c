@@ -190,7 +190,7 @@ int execute(int argc, char **argv)
   {
   case 0:
     execvp(argv[0], argv);
-    exit(1);
+    exit(ret);
   default:
     waitpid(pid, &ret, 0);
     return WEXITSTATUS(ret);
@@ -229,7 +229,7 @@ int main(int argc, char const *argv[])
     buf = readline(s);
     add_history(buf);
     if (buf == NULL)
-      exit(ret);
+      break;
     if (*buf != '\0')
     {
       ligne = split(buf, &nbw);
