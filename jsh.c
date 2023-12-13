@@ -220,17 +220,19 @@ int main(int argc, char const *argv[])
   rl_initialize();
   rl_outstream = stderr;
   s = malloc(256);
+  char *buf = NULL;
+  char **ligne;
+  int nbw;
   while (1)
   {
     prompt(s);
-    char *buf = readline(s);
+    buf = readline(s);
     add_history(buf);
     if (buf == NULL)
       exit(ret);
     if (*buf != '\0')
     {
-      int nbw;
-      char **ligne = split(buf, &nbw);
+      ligne = split(buf, &nbw);
       if (ligne != NULL)
       {
         if (strcmp(ligne[0], "exit") == 0)
@@ -240,17 +242,30 @@ int main(int argc, char const *argv[])
           for (int i = 0; i < nbw; i++)
             free(ligne[i]);
           free(ligne);
-          break;
+          free(s);
+          if (buf != NULL)
+          {
+            free(buf);
+          }
+          return ret;
         }
-        ret = execute(nbw, ligne);
-        //  printf("%d\n",ret);
-        // for (int i = 0; i < nbw + 1; i++)
-        // free(ligne[i]);
-        // free(ligne);
+        else
+        {
+          ret = execute(nbw, ligne);
+          //  printf("%d\n",ret);
+        }
       }
-      free(ligne);
+    }
+    if (buf != NULL)
+    {
+      free(buf);
     }
   }
+  for (int i = 0; i < nbw + 1; i++)
+  {
+    free(ligne[i]);
+  }
+  free(ligne);
   free(s);
   return ret;
 }
