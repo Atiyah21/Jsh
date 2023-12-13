@@ -12,6 +12,7 @@
 #include "commandes.h"
 
 static int ret = 0;
+char *s = NULL;
 int pid;
 static char prev_directory[PATH_MAX];
 
@@ -196,36 +197,34 @@ int execute(int argc, char **argv)
   }
 }
 
-char *prompt()
+void prompt(char *pro)
 {
-  char *s = malloc(33 * sizeof(char));
   char *actuel = malloc(PATH_MAX);
   getcwd(actuel, PATH_MAX);
   size_t taille_chemin = strlen(actuel);
-  //s[0] = '\0';
+  // s[0] = '\0';
   if (taille_chemin > 25)
   {
 
-    sprintf(s, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", 0, (actuel + taille_chemin - 22));
+    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", 0, (actuel + taille_chemin - 22));
   }
   else
   {
-    sprintf(s, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ",0, actuel);
+    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ", 0, actuel);
   }
   free(actuel);
-  return s;
 }
 
 int main(int argc, char const *argv[])
 {
   rl_initialize();
   rl_outstream = stderr;
+  s = malloc(256);
   while (1)
   {
-    char *s = prompt();
+    prompt(s);
     char *buf = readline(s);
     add_history(buf);
-    free(s);
     if (buf == NULL)
       exit(ret);
     if (*buf != '\0')
@@ -252,5 +251,6 @@ int main(int argc, char const *argv[])
       free(ligne);
     }
   }
+  free(s);
   return ret;
 }
