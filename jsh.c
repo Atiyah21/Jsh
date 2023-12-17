@@ -204,13 +204,8 @@ int execute(int argc, char **argv)
                                 if (k >= 0 ){
 
                                         kill(jobs[k].pid, SIGTERM);
-                                        fprintf(stderr, "[%d]   %d       Killed  %s\n", k, jobs[k].pid, jobs[k].command);
                                         if (jobs[k].status != 1){
-
-                                                jobs[k].status = 1;
-                                                jobs[k].pid = 0;
-                                                jobs[k].command[0] = '\0';
-						num_jobs--;
+                                                jobs[k].status = -1;
                                         }
                                 }
                                 else{
@@ -277,8 +272,19 @@ int execute(int argc, char **argv)
     }
     else
       tmp= ret;
-  }else {switch (pid = fork())
+  }else  if (strcmp(argv[0], "jobs") == 0)
   {
+    for (int i = 0; i < num_jobs; i++) {
+      if(jobs[i].status == -1 )
+      printf( "[%d]   %d       Killed  %s\n", i, jobs[i].pid, jobs[i].command);
+      if(jobs[i].status == 0 )
+      printf( "[%d]   %d       Running  %s\n", i, jobs[i].pid, jobs[i].command);
+      if(jobs[i].status == 1 )
+      printf("[%d]   %d       Done  %s\n", i, jobs[i].pid, jobs[i].command);
+    }
+    tmp = 0 ;
+  }else{
+    switch (pid = fork()){
   case 0:
     execvp(argv[0], argv);
     exit(ret);//Normalement cette ligne ne s'execute jamais
@@ -298,7 +304,6 @@ int execute(int argc, char **argv)
 
 int split(char* str,int* nbw,char ** res){
     *nbw=0;
-
     int lim=128;
     char *token=strtok(str, " ");
     while (token!=NULL) {
@@ -353,7 +358,7 @@ int main(int argc, char const *argv[])
     add_history(buf);
     if (buf == NULL)
       break;
-    if (*buf == '\0') goto start;
+    if (*buf != '\0'){
 
     char *ligne[128];
     char str[strlen(buf)+1];
@@ -361,7 +366,6 @@ int main(int argc, char const *argv[])
     split(str, &nbw,ligne);
 
     if (ligne==NULL) goto start;
-    /*Bouger execute dans redirection et pour faire les redirections, faire un fork excuter  */
     else if (strcmp(ligne[0], "exit") == 0)
     {
       if (nbw == 2)
@@ -373,22 +377,22 @@ int main(int argc, char const *argv[])
         close(fd); 
       fd=-1;
     }
-
+    }
     while (num_jobs > 0)
     {
         pid_t p = waitpid(-1, NULL, WNOHANG);
-        if (p > 0)
-        {
+        if (p > 0){
            for (int i = 0; i < num_jobs; i++) {
-
             if (jobs[i].pid == p) {
+              if(jobs[i].status == -1 )
+                fprintf(stderr, "[%d]   %d       Killed  %s\n", i, jobs[i].pid, jobs[i].command);
+              else if(jobs[i].status == 0 )
+                fprintf(stderr, "[%d]   %d       Done    %s\n", i, jobs[i].pid, jobs[i].command);
               num_jobs--;
-              fprintf(stderr, "[%d]   %d        Done    %s\n", i, jobs[i].pid, jobs[i].command);
               memmove(&jobs[i], &jobs[i + 1], (num_jobs - i) * sizeof(Job));
               i--;
             }
            }
-
         }
         else
         {
