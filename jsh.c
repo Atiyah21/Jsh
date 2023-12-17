@@ -9,35 +9,141 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "commandes.h"
+
 
 static int ret = 0;
 // char *s = NULL;
+
 int pid;
 static char prev_directory[PATH_MAX];
+int fd=-1;
+
+/*@return 0 si pas de redirection 
+* -1 si erreur
+* 1 si il y a une redirection 
+*/
+int redirection(char** ligne,int nbw){
+  if(nbw==1) return 0;
+  // int i=0;
+  for (int i=0;ligne[i]!=NULL;i++){
+    if (strcmp(ligne[i],"<")==0){
+      if(i+1>=nbw){
+        fprintf(stderr,"jsh: Missing arguement\n");
+        return -1;
+      }else {
+        fd=open(ligne[i+1],O_RDONLY);dup2(fd,STDIN_FILENO);
+        ligne[i]=NULL;
+          if(fd==-1){
+            fprintf(stderr,"jsh: File doesn't exist\n");
+            return -1;
+          }
+        return 1;
+      }
+    }else if (strcmp(ligne[i],">")==0){
+      if(i+1>=nbw){
+          fprintf(stderr,"jsh: Missing arguement\n");
+          return -1;
+        }else {
+          fd=open(ligne[i+1],O_WRONLY|O_CREAT|O_EXCL,0666);dup2(fd,STDOUT_FILENO);
+          ligne[i]=NULL;
+          if(fd==-1){
+            fprintf(stderr,"jsh: cannot overwrite existing file\n");
+            return -1;
+          }
+          return 1;
+        }
+    }else if (strcmp(ligne[i],">>")==0){
+      if(i+1>=nbw){
+        fprintf(stderr,"jsh: Missing arguement\n");
+        return -1;
+      }else{
+        fd=open(ligne[i+1],O_WRONLY|O_CREAT|O_APPEND,0666);dup2(fd,STDOUT_FILENO);
+        ligne[i]=NULL;
+        if(fd==-1)return -1;
+        return 1;      
+      }
+    }else if (strcmp(ligne[i],">|")==0){
+      if(i+1>=nbw){
+          fprintf(stderr,"jsh: Missing arguement\n");
+          return -1;
+        }else {
+          fd=open(ligne[i+1],O_WRONLY|O_CREAT|O_TRUNC,0666);dup2(fd,STDOUT_FILENO);
+          ligne[i]=NULL;
+          if(fd==-1){
+            return -1;
+          }
+          return 1;
+        }
+    }else if (strcmp(ligne[i],"2>")==0){
+      if(i+1>=nbw){
+        fprintf(stderr,"jsh: Missing arguement\n");
+        return -1;
+      }else{
+          fd=open(ligne[i+1],O_WRONLY|O_CREAT|O_EXCL,0666);
+          dup2(fd,STDERR_FILENO);
+          ligne[i]=NULL;
+          if(fd==-1){
+            fprintf(stderr,"jsh: cannot overwrite existing file\n");
+            return -1;
+          }
+          return 1;
+      }
+    }else if (strcmp(ligne[i],"2>>")==0){
+      if(i+1>=nbw){
+        fprintf(stderr,"jsh: Missing arguement\n");
+        return -1;
+      }else{
+          fd=open(ligne[i+1],O_WRONLY|O_CREAT|O_APPEND,0666);dup2(fd,STDERR_FILENO);
+          ligne[i]=NULL;
+          if(fd==-1){
+            return -1;
+          }
+          return 1;
+      }
+    }else if (strcmp(ligne[i],"2>|")==0){
+      if(i+1>=nbw){
+        fprintf(stderr,"jsh: Missing arguement\n");
+        return -1;
+      }else{
+          fd=open(ligne[i+1],O_WRONLY|O_CREAT|O_TRUNC,0666);dup2(fd,STDERR_FILENO);
+          ligne[i]=NULL;
+          if(fd==-1){
+            return -1;
+          }
+          return 1;
+      }
+    }
+  }
+  return 0;
+}
 
 
 int execute(int argc, char **argv)
 {
+  int tmp;
+  int fd0 =dup(0),fd1 =dup(1),fd2 =dup(2);
+  int i=redirection(argv,argc);
+  if(i==-1) {
+      return 1;
+  }
   if (strcmp(argv[0], "pwd") == 0)
   {
     if (argc != 1)
     {
       printf("too many arguments\n");
-      return 1;
+      tmp= 1;
     }
     char *actuel = malloc(100);
-    return pwd(actuel, 1);
-  }
-
-  if (strcmp(argv[0], "cd") == 0)
+    tmp= pwd(actuel, 1);
+  }else if (strcmp(argv[0], "cd") == 0)
   {
     if (argc > 2)
     {
       printf("too many arguments\n");
-      return 1;
+      tmp= 1;
     }
-    int tmp;
     if (argc == 1)
     {
       getcwd(prev_directory, PATH_MAX);
@@ -61,42 +167,44 @@ int execute(int argc, char **argv)
         tmp = cd(argv[1]);
       }
     }
-    return tmp;
-  }
-
-  if (strcmp(argv[0], "?") == 0)
-  {
+  } else if (strcmp(argv[0], "?") == 0){
     if (argc != 1)
     {
       printf("too many arguments\n");
-      return 1;
+      tmp= 1;
     }
     printf("%d\n", ret);
-    return 0;
+    tmp= 0;
   }
-  if (strcmp(argv[0], "exit") == 0)
+  else if (strcmp(argv[0], "exit") == 0)
   {
     if (argc > 3)
     {
       printf("too many arguments\n");
-      return 1;
+      tmp= 1;
     }
     if (argc > 1)
     {
-      return atoi(argv[1]);
+      tmp= atoi(argv[1]);
     }
     else
-      return ret;
-  }
-  switch (pid = fork())
+      tmp= ret;
+  }else {switch (pid = fork())
   {
   case 0:
     execvp(argv[0], argv);
-    exit(ret);
+    exit(ret);//Normalement cette ligne ne s'execute jamais
   default:
     waitpid(pid, &ret, 0);
-    return WEXITSTATUS(ret);
+    tmp=WEXITSTATUS(ret);
+  }}
+  if(i==1){
+    close(fd);
+    dup2(fd0,0);
+    dup2(fd1,1);
+    dup2(fd2,2);
   }
+  return tmp;
 }
 
 int split(char* str,int* nbw,char ** res){
@@ -113,47 +221,13 @@ int split(char* str,int* nbw,char ** res){
         token = strtok(NULL, " ");
         (*nbw)=(*nbw)+1;
     }
-    res[*nbw] = NULL;
+    for(int i=*nbw;i<lim;i++){
+      res[i]=NULL;
+    }
     return 0;
 }
 
-int redirection(char** ligne){
-  // int i=0;
-  for (int i=0;ligne[i]!=NULL;i++){
-    if (strcmp(ligne[i],">")==0){
-      if(ligne[i+1]==NULL){
-        printf("Missing arguement");
-        return -1;
-      }
-    }else if (strcmp(ligne[i],"<")==0){
-      if(ligne[i+1]==NULL){
-        printf("Missing arguement");
-        return -1;
-      }
-    }else if (strcmp(ligne[i],">>")==0){
-      if(ligne[i+1]==NULL){
-        printf("Missing arguement");
-        return -1;
-      }
-    }else if (strcmp(ligne[i],"2>")==0){
-      if(ligne[i+1]==NULL){
-        printf("Missing arguement");
-        return -1;
-      }
-    }else if (strcmp(ligne[i],"2>>")==0){
-      if(ligne[i+1]==NULL){
-        printf("Missing arguement");
-        return -1;
-      }
-    }else if (strcmp(ligne[i],"2>|")==0){
-      if(ligne[i+1]==NULL){
-        printf("Missing arguement");
-        return -1;
-      }
-    }else i++;
-  }
-  return 0;
-}
+
 
 void prompt(char *pro)
 {
@@ -178,41 +252,41 @@ int main(int argc, char const *argv[])
   rl_initialize();
   rl_outstream = stderr;
   char s[256];
-  // = malloc(256);
   char *buf = NULL;
-  // char **ligne=calloc(128, sizeof(char*));
   int nbw=0;
   while (1)
   {
+    start:
     prompt(s);
-    if (buf != NULL)
-    {
-      free(buf);
-    }
+    if (buf != NULL)free(buf);
+
     buf = readline(s);
     add_history(buf);
     if (buf == NULL)
       break;
-    if (*buf != '\0')
+    if (*buf == '\0') goto start;
+
+    char *ligne[128];
+    char str[strlen(buf)+1];
+    strcpy(str,buf);
+    split(str, &nbw,ligne);
+
+
+    if (ligne==NULL) goto start;
+    /*Bouger execute dans redirection et pour faire les redirections, faire un fork excuter  */
+    else if (strcmp(ligne[0], "exit") == 0)
     {
-      char *ligne[128];
-      char str[strlen(buf)+1];
-      strcpy(str,buf);
-      split(str, &nbw,ligne);
-      // if(nbw > 1)
-      //   redirection(ligne);
-      if (ligne != NULL)
-      {
-        if (strcmp(ligne[0], "exit") == 0)
-        {
-          if (nbw == 2)
-            ret = atoi(ligne[1]);
-          goto exit;
-        }else{
-          ret = execute(nbw, ligne);
-        }
-      }
+      if (nbw == 2)
+        ret = atoi(ligne[1]);
+      goto exit;
+    }else{
+      ret = execute(nbw, ligne);
+      if(fd!=-1) 
+        close(fd); 
+      fd=-1;
     }
+    
+  
   }
 
   exit : 
@@ -220,6 +294,5 @@ int main(int argc, char const *argv[])
     {
       free(buf);
     }
-  // free(s);
   return ret;
 }
