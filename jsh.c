@@ -19,6 +19,7 @@ static int ret = 0;
 int pid;
 static char prev_directory[PATH_MAX];
 int fd=-1;
+int jobs = 0;
 
 /*@return 0 si pas de redirection 
 * -1 si erreur
@@ -122,6 +123,35 @@ int redirection(char** ligne,int nbw){
 
 int execute(int argc, char **argv)
 {
+  bool bg = false;
+
+  if (argc > 1 && strcmp(argv[argc - 1], "&") == 0)
+  {
+    
+    argv[argc - 1] = NULL;
+    argc--;
+    bg = true;
+    pid = fork();
+    if (pid < 0){
+      perror("fork error");
+      return 1;
+    }
+    else if (pid == 0){
+      execvp(argv[0], argv);
+      perror("execvp error");
+      exit(EXIT_FAILURE);
+    }
+    else{
+     if(bg){
+      jobs++;
+      return 0;
+     }
+     else{
+      waitpid(pid, &ret, 0);
+      return WEXITSTATUS(ret);
+     }
+    }
+  }else{
   int tmp;
   int fd0 =dup(0),fd1 =dup(1),fd2 =dup(2);
   int i=redirection(argv,argc);
@@ -205,6 +235,7 @@ int execute(int argc, char **argv)
     dup2(fd2,2);
   }
   return tmp;
+  }
 }
 
 int split(char* str,int* nbw,char ** res){
@@ -238,11 +269,11 @@ void prompt(char *pro)
   if (taille_chemin > 25)
   {
 
-    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", 0, (actuel + taille_chemin - 22));
+    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", jobs, (actuel + taille_chemin - 22));
   }
   else
   {
-    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ", 0, actuel);
+    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ", jobs, actuel);
   }
   free(actuel);
 }
@@ -284,6 +315,18 @@ int main(int argc, char const *argv[])
       if(fd!=-1) 
         close(fd); 
       fd=-1;
+    }
+
+    while (jobs > 0)
+    {
+        if (waitpid(-1, NULL, WNOHANG) > 0)
+        {
+            jobs--;
+        }
+        else
+        {
+            break; // Sortir de la boucle si aucun processus en arrière-plan n'est terminé
+        }
     }
     
   
