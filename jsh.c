@@ -10,8 +10,18 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "commandes.h"
 
+typedef struct
+{
+    pid_t pid;          
+    char command[256];  
+    int status;         
+} Job;
+
+Job jobs[128];
+int num_jobs = 0; 
 
 static int ret = 0;
 // char *s = NULL;
@@ -19,7 +29,6 @@ static int ret = 0;
 int pid;
 static char prev_directory[PATH_MAX];
 int fd=-1;
-int jobs = 0;
 
 /*@return 0 si pas de redirection 
 * -1 si erreur
@@ -143,7 +152,14 @@ int execute(int argc, char **argv)
     }
     else{
      if(bg){
-      jobs++;
+      jobs[num_jobs].pid = pid;
+      strcpy(jobs[num_jobs].command, argv[0]);
+      for (int i = 1; i < argc; i++) {
+        strcat(jobs[num_jobs].command, " ");
+        strcat(jobs[num_jobs].command, argv[i]);
+      }
+      num_jobs++;
+      printf("[%d]   %d        Running %s\n", num_jobs - 1, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
       return 0;
      }
      else{
@@ -269,11 +285,11 @@ void prompt(char *pro)
   if (taille_chemin > 25)
   {
 
-    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", jobs, (actuel + taille_chemin - 22));
+    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002...%s\001\033[00m\002$ ", num_jobs, (actuel + taille_chemin - 22));
   }
   else
   {
-    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ", jobs, actuel);
+    sprintf(pro, "\001\033[91m\002[%d]\001\033[36m\002%s\001\033[00m\002$ ", num_jobs, actuel);
   }
   free(actuel);
 }
@@ -302,7 +318,6 @@ int main(int argc, char const *argv[])
     strcpy(str,buf);
     split(str, &nbw,ligne);
 
-
     if (ligne==NULL) goto start;
     /*Bouger execute dans redirection et pour faire les redirections, faire un fork excuter  */
     else if (strcmp(ligne[0], "exit") == 0)
@@ -317,18 +332,28 @@ int main(int argc, char const *argv[])
       fd=-1;
     }
 
-    while (jobs > 0)
+    while (num_jobs > 0)
     {
-        if (waitpid(-1, NULL, WNOHANG) > 0)
+        pid_t p = waitpid(-1, NULL, WNOHANG);
+        if (p > 0)
         {
-            jobs--;
+           for (int i = 0; i < num_jobs; i++) {
+
+            if (jobs[i].pid == p) {
+              num_jobs--;
+              printf("[%d]   %d        Done    %s\n", i, jobs[i].pid, jobs[i].command);
+              memmove(&jobs[i], &jobs[i + 1], (num_jobs - i) * sizeof(Job));
+              i--;
+            }
+           }
+
         }
         else
         {
             break; // Sortir de la boucle si aucun processus en arrière-plan n'est terminé
         }
     }
-    
+
   
   }
 
