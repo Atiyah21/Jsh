@@ -159,7 +159,7 @@ int execute(int argc, char **argv)
         strcat(jobs[num_jobs].command, argv[i]);
       }
       num_jobs++;
-      printf("[%d]   %d        Running %s\n", num_jobs - 1, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
+      fprintf(stderr, "[%d]   %d        Running %s\n", num_jobs - 1, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
       return 0;
      }
      else{
@@ -341,7 +341,7 @@ int main(int argc, char const *argv[])
 
             if (jobs[i].pid == p) {
               num_jobs--;
-              printf("[%d]   %d        Done    %s\n", i, jobs[i].pid, jobs[i].command);
+              fprintf(stderr, "[%d]   %d        Done    %s\n", i, jobs[i].pid, jobs[i].command);
               memmove(&jobs[i], &jobs[i + 1], (num_jobs - i) * sizeof(Job));
               i--;
             }
