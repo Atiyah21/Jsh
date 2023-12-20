@@ -30,6 +30,14 @@ int pid;
 static char prev_directory[PATH_MAX];
 int fd=-1;
 
+int getNumJobs(){
+	int res = 0;
+	for (int i=0; i<128; i++){
+		if (jobs[i].status >= 0) res++;
+	}
+	return res;
+}
+
 /*@return 0 si pas de redirection 
 * -1 si erreur
 * 1 si il y a une redirection 
@@ -183,7 +191,41 @@ int execute(int argc, char **argv)
     }
     char *actuel = malloc(100);
     tmp= pwd(actuel, 1);
-  }else if (strcmp(argv[0], "cd") == 0)
+  }
+ 
+  else if (strcmp(argv[0], "kill") == 0){
+
+                if (argv[1] != NULL && argv[1][0] == '%'){
+
+                        if (strlen(argv[1]) >= 2){
+
+                                int k = atoi(argv[1] + 1) - 1;
+
+                                if (k >= 0 ){
+
+                                        kill(jobs[k].pid, SIGTERM);
+                                        fprintf(stderr, "[%d]   %d       Killed  %s\n", k, jobs[k].pid, jobs[k].command);
+                                        if (jobs[k].status != 1){
+
+                                                jobs[k].status = 1;
+                                                jobs[k].pid = 0;
+                                                jobs[k].command[0] = '\0';
+						num_jobs--;
+                                        }
+                                }
+                                else{
+                                        printf("Invalid job index\n");
+                                }
+                        }
+                        else{
+                                printf("Invalid argument for kill\n");
+                        }
+                }
+                else{
+                        printf("Invalid syntax for kill\n");
+                }
+        }
+  else if (strcmp(argv[0], "cd") == 0)
   {
     if (argc > 2)
     {
@@ -350,7 +392,7 @@ int main(int argc, char const *argv[])
         }
         else
         {
-            break; // Sortir de la boucle si aucun processus en arrière-plan n'est terminé
+            break;
         }
     }
 
