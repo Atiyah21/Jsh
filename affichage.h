@@ -12,5 +12,5 @@ extern void prompt(char *, int);
 extern void running_status(int,int,char*);
 extern void done_status(int,int,char*);
 extern void killed_status(int,int,char*);
-
+extern void stopped_status(int, int, char *);
 #endif
