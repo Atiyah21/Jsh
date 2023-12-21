@@ -16,8 +16,7 @@ typedef struct
   1 -> Done
   0 -> en cours
   -1 -> Killed
-  2 -> Sleeping? 
-  */
+  2 -> suspendu*/
   int status;
   int index;
 } Job;
@@ -43,9 +42,16 @@ void update_num_jobs()
 
 int get_smallest_index(){
   for(int i = 0 ; i< 512 ; i++){
-    if (jobs[i].status==-1) return i;
+    if (jobs[i].index==-1) return i;
   }
   perror("No space left");
+  return -1;
+}
+
+int get(int k){
+  for(int i=0;i<512;i++){
+    if(jobs[i].index== k ) return i;
+  }
   return -1;
 }
 
@@ -71,18 +77,19 @@ int execute(int argc, char **argv)
     }
     else
     {
-
-      jobs[num_jobs].pid = pid;
-      jobs[num_jobs].index = get_smallest_index() ;
-      jobs[num_jobs].status = 1;
-      strcpy(jobs[num_jobs].command, argv[0]);
+      Job j;
+      j.pid = pid;
+      j.index = get_smallest_index() ;
+      j.status = 1;
+      strcpy(j.command, argv[0]);
       for (int i = 1; i < argc; i++)
       {
-        strcat(jobs[num_jobs].command, " ");
-        strcat(jobs[num_jobs].command, argv[i]);
+        strcat(j.command, " ");
+        strcat(j.command, argv[i]);
       }
+      jobs[num_jobs]= j ;
       num_jobs++;
-      running_status(num_jobs, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
+      running_status(j.index, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
       return 0;
     }
   }
@@ -105,7 +112,6 @@ int execute(int argc, char **argv)
       char *actuel = malloc(100);
       tmp = pwd(actuel, 1);
     }
-
     else if (strcmp(argv[0], "cd") == 0)
     {
       if (argc > 2)
@@ -160,33 +166,18 @@ int execute(int argc, char **argv)
       }
       else
         tmp = ret;
-    } else if (strcmp(argv[0], "kill") == 0)
-    {
-    if (argv[1] != NULL && argv[1][0] == '%'){
-
-                        if (strlen(argv[1]) >= 2){
-
-                                int k = atoi(argv[1] + 1) - 1;
-
-                                if (k >= 0 ){
-
-                                        kill(jobs[k].pid, SIGTERM);
-                                        if (jobs[k].status != 1){
-                                                jobs[k].status = -1;
-                                        }
-                                }
-                                else{
-                                        printf("Invalid job index\n");
-                                }
-                        }
-                        else{
-                                printf("Invalid argument for kill\n");
-                        }
-                }
-                else{
-                        printf("Invalid syntax for kill\n");
-                }
-
+    } else if (strcmp(argv[0], "kill") == 0){
+    if (argv[1] != NULL ){
+      if(argv[1][0] == '%'){
+        int k = atoi(argv[1] + 1) - 1;
+        int i =get(k);
+        if(i==-1)printf("erreur pas de processus %d\n",k);
+        kill(jobs[i].pid, SIGTERM);
+        // if (jobs[i].status != 1){
+          jobs[i].status = -1;
+        // }
+      }
+    }
     }else if (strcmp(argv[0], "jobs") == 0)
     {
       for (int i = 0; i < num_jobs; i++)
@@ -224,9 +215,11 @@ int execute(int argc, char **argv)
 }
 
 void empty(int i){
-  jobs[i].status=-1;
-  jobs[i].index=-1;
-  jobs[i].command[0]='\0';
+  Job j={
+  .status=-2,
+  .index=-1,
+  .command={'\0'}};
+  jobs[i]=j;
 }
 
 int split(char *str, int *nbw, char **res)
@@ -252,8 +245,16 @@ int split(char *str, int *nbw, char **res)
   return 0;
 }
 
+void init(){
+  for (size_t i = 0; i < 512; i++)
+  {
+    empty(i);
+  }
+}
+
 int main(int argc, char const *argv[])
 {
+  init();
   rl_initialize();
   rl_outstream = stderr;
   char s[256];
@@ -300,9 +301,9 @@ int main(int argc, char const *argv[])
          for (int i = 0; i < 512; i++) {
           if (jobs[i].pid == p) {
             if(jobs[i].status == -1 )
-              fprintf(stderr, "[%d]   %d       Killed  %s\n", i, jobs[i].pid, jobs[i].command);
+              fprintf(stderr, "[%d]   %d       Killed  %s\n",jobs[i].index, jobs[i].pid, jobs[i].command);
             else if(jobs[i].status == 1 )
-              fprintf(stderr, "[%d]   %d       Done    %s\n", i, jobs[i].pid, jobs[i].command);
+              fprintf(stderr, "[%d]   %d       Done    %s\n", jobs[i].index, jobs[i].pid, jobs[i].command);
             num_jobs--;
             empty(i);
             
