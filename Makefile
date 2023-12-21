@@ -1,6 +1,6 @@
 CC= gcc
 CFLAGS = -g -Wall
-DEPS = commandes.h
+DEPS = commandes.h redirection.h 
 EXEC = jsh
 
 build : ${EXEC} 
@@ -14,6 +14,5 @@ clean :
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $<
 
-jsh : jsh.o commandes.o -lreadline
+jsh : commandes.o redirection.o jsh.o -lreadline
 	$(CC) $(CFLAGS) -o $@ $^
-
