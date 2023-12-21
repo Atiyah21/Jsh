@@ -40,17 +40,32 @@ void update_num_jobs()
   num_jobs = res;
 }
 
-int get_smallest_index(){
-  for(int i = 0 ; i< 512 ; i++){
-    if (jobs[i].index==-1) return i;
+int get_smallest_index()
+{
+  for (int i = 0; i < 512; i++)
+  {
+    if (jobs[i].index == -1)
+      return i;
   }
   perror("No space left");
   return -1;
 }
 
-int get(int k){
-  for(int i=0;i<512;i++){
-    if(jobs[i].index== k ) return i;
+int get_job_id(int k)
+{
+  for (int i = 0; i < 512; i++)
+  {
+    if (jobs[i].index == k)
+      return i;
+  }
+  return -1;
+}
+int get_job_pid(int k)
+{
+  for (int i = 0; i < 512; i++)
+  {
+    if (jobs[i].pid == k)
+      return i;
   }
   return -1;
 }
@@ -79,7 +94,7 @@ int execute(int argc, char **argv)
     {
       Job j;
       j.pid = pid;
-      j.index = get_smallest_index() ;
+      j.index = get_smallest_index();
       j.status = 1;
       strcpy(j.command, argv[0]);
       for (int i = 1; i < argc; i++)
@@ -87,7 +102,7 @@ int execute(int argc, char **argv)
         strcat(j.command, " ");
         strcat(j.command, argv[i]);
       }
-      jobs[num_jobs]= j ;
+      jobs[num_jobs] = j;
       num_jobs++;
       running_status(j.index, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
       return 0;
@@ -166,19 +181,54 @@ int execute(int argc, char **argv)
       }
       else
         tmp = ret;
-    } else if (strcmp(argv[0], "kill") == 0){
-    if (argv[1] != NULL ){
-      if(argv[1][0] == '%'){
-        int k = atoi(argv[1] + 1) - 1;
-        int i =get(k);
-        if(i==-1)printf("erreur pas de processus %d\n",k);
-        kill(jobs[i].pid, SIGTERM);
-        // if (jobs[i].status != 1){
+    }
+    else if (strcmp(argv[0], "kill") == 0)
+    {
+      if (argv[1] != NULL)
+      {
+        if (argv[1][0] == '%')
+        {
+          int k = atoi(argv[1] + 1) - 1;
+          int i = get_job_id(k);
+          if (i == -1)
+            printf("erreur pas de processus %d\n", k);
+          kill(jobs[i].pid, 15);
           jobs[i].status = -1;
-        // }
+        }
+        else if (argv[1][0] == '-')
+        {
+          if (argv[2][0] == '%')
+          {
+            int k = atoi(argv[2] + 1) - 1;
+            int i = get_job_id(k);
+            if (i == -1)
+              printf("erreur pas de processus %d\n", k);
+            kill(jobs[i].pid, atoi(argv[1] + 1));
+            jobs[i].status = -1;
+          }
+          else
+          {
+            int k = atoi(argv[2] + 1) - 1;
+            int i = get_job_pid(k);
+            if (i == -1)
+              printf("erreur pas de processus %d\n", k);
+            kill(jobs[i].pid, atoi(argv[1] + 1));
+            jobs[i].status = -1;
+          }
+        }
+        else
+        {
+          int k = atoi(argv[1]);
+          int i = get_job_pid(k);
+          if (i == -1)
+            printf("erreur pas de processus %d\n", k);
+          kill(jobs[i].pid, SIGTERM);
+
+          jobs[i].status = -1;
+        }
       }
     }
-    }else if (strcmp(argv[0], "jobs") == 0)
+    else if (strcmp(argv[0], "jobs") == 0)
     {
       for (int i = 0; i < num_jobs; i++)
       {
@@ -214,12 +264,13 @@ int execute(int argc, char **argv)
   }
 }
 
-void empty(int i){
-  Job j={
-  .status=-2,
-  .index=-1,
-  .command={'\0'}};
-  jobs[i]=j;
+void empty(int i)
+{
+  Job j = {
+      .status = -2,
+      .index = -1,
+      .command = {'\0'}};
+  jobs[i] = j;
 }
 
 int split(char *str, int *nbw, char **res)
@@ -245,7 +296,8 @@ int split(char *str, int *nbw, char **res)
   return 0;
 }
 
-void init(){
+void init()
+{
   for (size_t i = 0; i < 512; i++)
   {
     empty(i);
@@ -298,12 +350,15 @@ int main(int argc, char const *argv[])
     while (num_jobs > 0)
     {
       pid_t p = waitpid(-1, NULL, WNOHANG);
-      if (p > 0){
-         for (int i = 0; i < 512; i++) {
-          if (jobs[i].pid == p) {
-            if(jobs[i].status == -1 )
-              fprintf(stderr, "[%d]   %d       Killed  %s\n",jobs[i].index, jobs[i].pid, jobs[i].command);
-            else if(jobs[i].status == 1 )
+      if (p > 0)
+      {
+        for (int i = 0; i < 512; i++)
+        {
+          if (jobs[i].pid == p)
+          {
+            if (jobs[i].status == -1)
+              fprintf(stderr, "[%d]   %d       Killed  %s\n", jobs[i].index, jobs[i].pid, jobs[i].command);
+            else if (jobs[i].status == 1)
               fprintf(stderr, "[%d]   %d       Done    %s\n", jobs[i].index, jobs[i].pid, jobs[i].command);
             num_jobs--;
             empty(i);
