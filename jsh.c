@@ -140,26 +140,24 @@ int redirection(char** ligne,int nbw){
 
 int execute(int argc, char **argv)
 {
-  bool bg = false;
-
   if (argc > 1 && strcmp(argv[argc - 1], "&") == 0)
   {
-    
+   
     argv[argc - 1] = NULL;
     argc--;
-    bg = true;
     pid = fork();
     if (pid < 0){
       perror("fork error");
       return 1;
     }
     else if (pid == 0){
+      
       execvp(argv[0], argv);
       perror("execvp error");
       exit(EXIT_FAILURE);
     }
     else{
-     if(bg){
+     
       jobs[num_jobs].pid = pid;
       strcpy(jobs[num_jobs].command, argv[0]);
       for (int i = 1; i < argc; i++) {
@@ -170,11 +168,7 @@ int execute(int argc, char **argv)
       fprintf(stderr, "[%d]   %d        Running %s\n", num_jobs - 1, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
       return 0;
      }
-     else{
-      waitpid(pid, &ret, 0);
-      return WEXITSTATUS(ret);
-     }
-    }
+    
   }else{
   int tmp;
   int fd0 =dup(0),fd1 =dup(1),fd2 =dup(2);
@@ -193,33 +187,6 @@ int execute(int argc, char **argv)
     tmp= pwd(actuel, 1);
   }
  
-  else if (strcmp(argv[0], "kill") == 0){
-
-                if (argv[1] != NULL && argv[1][0] == '%'){
-
-                        if (strlen(argv[1]) >= 2){
-
-                                int k = atoi(argv[1] + 1) - 1;
-
-                                if (k >= 0 ){
-
-                                        kill(jobs[k].pid, SIGTERM);
-                                        if (jobs[k].status != 1){
-                                                jobs[k].status = -1;
-                                        }
-                                }
-                                else{
-                                        printf("Invalid job index\n");
-                                }
-                        }
-                        else{
-                                printf("Invalid argument for kill\n");
-                        }
-                }
-                else{
-                        printf("Invalid syntax for kill\n");
-                }
-        }
   else if (strcmp(argv[0], "cd") == 0)
   {
     if (argc > 2)
@@ -378,28 +345,8 @@ int main(int argc, char const *argv[])
       fd=-1;
     }
     }
-    while (num_jobs > 0)
-    {
-        pid_t p = waitpid(-1, NULL, WNOHANG);
-        if (p > 0){
-           for (int i = 0; i < num_jobs; i++) {
-            if (jobs[i].pid == p) {
-              if(jobs[i].status == -1 )
-                fprintf(stderr, "[%d]   %d       Killed  %s\n", i, jobs[i].pid, jobs[i].command);
-              else if(jobs[i].status == 0 )
-                fprintf(stderr, "[%d]   %d       Done    %s\n", i, jobs[i].pid, jobs[i].command);
-              num_jobs--;
-              memmove(&jobs[i], &jobs[i + 1], (num_jobs - i) * sizeof(Job));
-              i--;
-            }
-           }
-        }
-        else
-        {
-            break;
-        }
-    }
 
+      
   
   }
 
