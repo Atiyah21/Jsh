@@ -9,7 +9,7 @@
 
 typedef struct
 {
-  //pid -1 veut dire que c'est vide
+  // pid -1 veut dire que c'est vide
   pid_t pid;
   char command[256];
   /*
@@ -34,7 +34,7 @@ void update_num_jobs()
   int res = 0;
   for (int i = 0; i < 128; i++)
   {
-    if (jobs[i].pid!=-1)
+    if (jobs[i].pid != -1)
       res++;
   }
   num_jobs = res;
@@ -295,7 +295,8 @@ int main(int argc, char const *argv[])
         fd = -1;
       }
     }
-      while (num_jobs > 0){
+    while (num_jobs > 0)
+    {
       pid_t p = waitpid(-1, NULL, WNOHANG);
       if (p > 0){
          for (int i = 0; i < 512; i++) {
@@ -306,12 +307,11 @@ int main(int argc, char const *argv[])
               fprintf(stderr, "[%d]   %d       Done    %s\n", jobs[i].index, jobs[i].pid, jobs[i].command);
             num_jobs--;
             empty(i);
-            
           }
-         }
+        }
       }
       else
-          break;
+        break;
     }
   }
 
