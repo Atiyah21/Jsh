@@ -64,7 +64,7 @@ int execute(int argc, char **argv)
         strcat(jobs[num_jobs].command, argv[i]);
       }
       num_jobs++;
-      running_status(num_jobs - 1, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
+      running_status(num_jobs, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
       return 0;
     }
   }
