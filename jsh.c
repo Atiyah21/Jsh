@@ -190,41 +190,62 @@ int execute(int argc, char **argv)
         {
           int k = atoi(argv[1] + 1) - 1;
           int i = get_job_id(k);
-          if (i == -1)
+          if (i == -1){
             printf("erreur pas de processus %d\n", k);
+            tmp=1;
+            goto end;
+          }
           kill(jobs[i].pid, 15);
           jobs[i].status = -1;
+          tmp=0;
         }
         else if (argv[1][0] == '-')
-        {
+        { 
+          int sig=atoi(argv[1] + 1);
           if (argv[2][0] == '%')
           {
             int k = atoi(argv[2] + 1) - 1;
             int i = get_job_id(k);
-            if (i == -1)
+            if (i == -1){
               printf("erreur pas de processus %d\n", k);
-            kill(jobs[i].pid, atoi(argv[1] + 1));
-            jobs[i].status = -1;
+              tmp=1;
+              goto end;
+            }
+            kill(jobs[i].pid, sig);
+            if(sig==20)
+            jobs[i].status = 2;
+            else if (sig==18)
+            jobs[i].status = 0;
+            else 
+            tmp=0;
+          
           }
           else
           {
             int k = atoi(argv[2] + 1) - 1;
             int i = get_job_pid(k);
-            if (i == -1)
+            if (i == -1){
               printf("erreur pas de processus %d\n", k);
-            kill(jobs[i].pid, atoi(argv[1] + 1));
-            jobs[i].status = -1;
+              tmp=1;
+              goto end;
+            }
+            kill(jobs[i].pid,sig );
+            jobs[i].status = -1;            
+            tmp=0;
           }
         }
         else
         {
           int k = atoi(argv[1]);
           int i = get_job_pid(k);
-          if (i == -1)
+          if (i == -1){
             printf("erreur pas de processus %d\n", k);
+            tmp=1;
+            goto end;
+          }
           kill(jobs[i].pid, SIGTERM);
-
           jobs[i].status = -1;
+          tmp=0;
         }
       }
     }
@@ -234,9 +255,9 @@ int execute(int argc, char **argv)
       {
         if (jobs[i].status == -1)
           killed_status(i, jobs[i].pid, jobs[i].command);
-        if (jobs[i].status == 0)
-          running_status(i, jobs[i].pid, jobs[i].command);
         if (jobs[i].status == 1)
+          running_status(i, jobs[i].pid, jobs[i].command);
+        if (jobs[i].status == 0)
           done_status(i, jobs[i].pid, jobs[i].command);
       }
       tmp = 0;
@@ -253,6 +274,7 @@ int execute(int argc, char **argv)
         tmp = WEXITSTATUS(ret);
       }
     }
+    end : 
     if (i == 1)
     {
       close(fd);
