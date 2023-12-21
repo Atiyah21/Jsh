@@ -38,3 +38,9 @@ void killed_status(int n, int pid, char *cmd )
         sprintf(char_jobs, "[%d]   %d        Killed      %s\n", n, pid, cmd);
         write(2, char_jobs, strlen(char_jobs));
 }
+void stopped_status(int n, int pid, char *cmd )
+{
+        char char_jobs[305];
+        sprintf(char_jobs, "[%d]   %d        Stopped      %s\n", n, pid, cmd);
+        write(2, char_jobs, strlen(char_jobs));
+}

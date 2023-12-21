@@ -335,11 +335,13 @@ int main(int argc, char const *argv[])
         goto start;
       else if (strcmp(ligne[0], "exit") == 0)
       {
-        if(num_jobs!=0){
-            fprintf(stderr, "Il y a des jobs en cours\n");
-            ret = 1;
-            goto jobs;
-        }else if (nbw == 2)
+        if (num_jobs != 0)
+        {
+          fprintf(stderr, "Il y a des jobs en cours\n");
+          ret = 1;
+          goto jobs;
+        }
+        else if (nbw == 2)
           ret = atoi(ligne[1]);
         goto exit;
       }
@@ -351,7 +353,7 @@ int main(int argc, char const *argv[])
         fd = -1;
       }
     }
-    jobs:
+  jobs:
     while (num_jobs > 0)
     {
       pid_t p = waitpid(-1, NULL, WNOHANG);
@@ -362,9 +364,9 @@ int main(int argc, char const *argv[])
           if (jobs[i].pid == p)
           {
             if (jobs[i].status == -1)
-              fprintf(stderr, "[%d]   %d       Killed  %s\n", jobs[i].index, jobs[i].pid, jobs[i].command);
+              killed_status (jobs[i].index, jobs[i].pid, jobs[i].command);
             else if (jobs[i].status == 1)
-              fprintf(stderr, "[%d]   %d       Done    %s\n", jobs[i].index, jobs[i].pid, jobs[i].command);
+              done_status(jobs[i].index, jobs[i].pid, jobs[i].command);
             num_jobs--;
             empty(i);
           }
