@@ -85,7 +85,8 @@ int execute(int argc, char **argv)
     }
     else if (pid == 0)
     {
-
+      pid = getpid();
+      setpgid(pid,pid);
       execvp(argv[0], argv);
       perror("execvp error");
       exit(EXIT_FAILURE);
@@ -196,7 +197,7 @@ int execute(int argc, char **argv)
             tmp = 1;
             goto end;
           }
-          kill(jobs[i].pid, 15);
+          kill(-jobs[i].pid, 15);
           jobs[i].status = -1;
           tmp = 0;
         }
@@ -213,7 +214,7 @@ int execute(int argc, char **argv)
               tmp = 1;
               goto end;
             }
-            kill(jobs[i].pid, sig);
+            kill(-jobs[i].pid, sig);
             if (sig == 20)
               jobs[i].status = 2;
             else if (sig == 18)
