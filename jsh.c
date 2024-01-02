@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "commandes.h"
 #include "redirection.h"
+#include <signal.h>
 #include "affichage.h"
 
 typedef struct
@@ -70,7 +71,7 @@ int get_job_pid(int k)
   return -1;
 }
 
-void add_job(int argc, char ** argv,pid_t pid)
+void add_job(int argc, char **argv, pid_t pid)
 {
   Job j;
   j.pid = pid;
@@ -78,7 +79,7 @@ void add_job(int argc, char ** argv,pid_t pid)
   j.status = 1;
   strcpy(j.command, argv[0]);
   int i = 1;
-  for (; argv[i]!=NULL; i++)
+  for (; argv[i] != NULL; i++)
   {
     strcat(j.command, " ");
     strcat(j.command, argv[i]);
@@ -96,7 +97,8 @@ void empty(int i)
   jobs[i] = j;
 }
 
-void show_status(int i){
+void show_status(int i)
+{
   if (jobs[i].status == -1)
     killed_status(i, jobs[i].pid, jobs[i].command);
   if (jobs[i].status == 1)
@@ -123,7 +125,7 @@ int execute(int argc, char **argv)
     else if (pid == 0)
     {
       pid = getpid();
-      setpgid(pid,pid);
+      setpgid(pid, pid);
       execvp(argv[0], argv);
       perror("execvp error");
       exit(EXIT_FAILURE);
@@ -313,24 +315,27 @@ int execute(int argc, char **argv)
         exit(ret); // Normalement cette ligne ne s'execute jamais
       default:
 
-        waitpid(pid,&ret,WUNTRACED);
-        if(WIFSTOPPED(ret)){
-            tmp=148;
-          if(i==1){
-            argc=0;
-            while(argv[argc]!=NULL)
+        waitpid(pid, &ret, WUNTRACED);
+        if (WIFSTOPPED(ret))
+        {
+          tmp = 148;
+          if (i == 1)
+          {
+            argc = 0;
+            while (argv[argc] != NULL)
               argc++;
           }
           int index = get_smallest_index();
-          add_job(argc,argv,pid);
+          add_job(argc, argv, pid);
           jobs[index].status = 2;
-            show_status(index);
-          }
-          else{
+          show_status(index);
+        }
+        else
+        {
           tmp = WEXITSTATUS(ret);
         }
         break;
-    }
+      }
     }
   end:
     if (i == 1)
@@ -343,8 +348,6 @@ int execute(int argc, char **argv)
     return tmp;
   }
 }
-
-
 
 int split(char *str, int *nbw, char **res)
 {
@@ -377,32 +380,46 @@ void init()
   }
 }
 
-void update_jobs(){
+void update_jobs()
+{
   while (num_jobs > 0)
   {
-      pid_t p = waitpid(-1, NULL, WNOHANG | WUNTRACED);
-      if (p > 0)
+    pid_t p = waitpid(-1, NULL, WNOHANG | WUNTRACED);
+    if (p > 0)
+    {
+      int i = get_job_pid(p);
+      if (i != -1)
       {
-        int i = get_job_pid(p);
-          if (i != -1)
-          {
-            if (jobs[i].status == -1 ||jobs[i].status == 1)
-            {
-              show_status(i);
-              num_jobs--;
-              empty(i);
-            }else if(jobs[i].status == 2){
-              show_status(i);
-            }
-          }
+        if (jobs[i].status == -1 || jobs[i].status == 1)
+        {
+          show_status(i);
+          num_jobs--;
+          empty(i);
+        }
+        else if (jobs[i].status == 2)
+        {
+          show_status(i);
+        }
       }
-      else
-        break;
+    }
+    else
+      break;
   }
 }
 
 int main(int argc, char const *argv[])
 {
+
+  struct sigaction action;
+  memset(&action, 0, sizeof(struct sigaction));
+  action.sa_handler = SIG_IGN;
+  sigaction(SIGINT, &action, NULL);
+  sigaction(SIGTERM, &action, NULL);
+  sigaction(SIGTTIN, &action, NULL);
+  sigaction(SIGQUIT, &action, NULL);
+  sigaction(SIGTTOU, &action, NULL);
+  sigaction(SIGTSTP, &action, NULL);  
+
   init();
   rl_initialize();
   rl_outstream = stderr;
