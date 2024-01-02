@@ -70,6 +70,43 @@ int get_job_pid(int k)
   return -1;
 }
 
+void add_job(int argc, char ** argv,pid_t pid)
+{
+  Job j;
+  j.pid = pid;
+  j.index = get_smallest_index();
+  j.status = 1;
+  strcpy(j.command, argv[0]);
+  int i = 1;
+  for (; argv[i]!=NULL; i++)
+  {
+    strcat(j.command, " ");
+    strcat(j.command, argv[i]);
+  }
+  jobs[num_jobs] = j;
+  num_jobs++;
+}
+
+void empty(int i)
+{
+  Job j = {
+      .status = -2,
+      .index = -1,
+      .command = {'\0'}};
+  jobs[i] = j;
+}
+
+void show_status(int i){
+  if (jobs[i].status == -1)
+    killed_status(i, jobs[i].pid, jobs[i].command);
+  if (jobs[i].status == 1)
+    done_status(i, jobs[i].pid, jobs[i].command);
+  if (jobs[i].status == 0)
+    running_status(i, jobs[i].pid, jobs[i].command);
+  if (jobs[i].status == 2)
+    stopped_status(i, jobs[i].pid, jobs[i].command);
+}
+
 int execute(int argc, char **argv)
 {
   if (argc > 1 && strcmp(argv[argc - 1], "&") == 0)
@@ -220,7 +257,8 @@ int execute(int argc, char **argv)
             else if (sig == 18)
               jobs[i].status = 0;
             else
-              tmp = 0;
+              jobs[i].status = -1;
+            tmp = 0;
           }
           else
           {
@@ -233,7 +271,12 @@ int execute(int argc, char **argv)
               goto end;
             }
             kill(jobs[i].pid, sig);
-            jobs[i].status = -1;
+            if (sig == 20)
+              jobs[i].status = 2;
+            else if (sig == 18)
+              jobs[i].status = 0;
+            else
+              jobs[i].status = -1;
             tmp = 0;
           }
         }
@@ -257,14 +300,7 @@ int execute(int argc, char **argv)
     {
       for (int i = 0; i < num_jobs; i++)
       {
-        if (jobs[i].status == -1)
-          killed_status(i, jobs[i].pid, jobs[i].command);
-        if (jobs[i].status == 1)
-          running_status(i, jobs[i].pid, jobs[i].command);
-        if (jobs[i].status == 0)
-          done_status(i, jobs[i].pid, jobs[i].command);
-        if (jobs[i].status == 2)
-          stopped_status(i, jobs[i].pid, jobs[i].command);
+        show_status(i);
       }
       tmp = 0;
     }
@@ -276,9 +312,25 @@ int execute(int argc, char **argv)
         execvp(argv[0], argv);
         exit(ret); // Normalement cette ligne ne s'execute jamais
       default:
-        waitpid(pid, &ret, 0);
-        tmp = WEXITSTATUS(ret);
-      }
+
+        waitpid(pid,&ret,WUNTRACED);
+        if(WIFSTOPPED(ret)){
+            tmp=148;
+          if(i==1){
+            argc=0;
+            while(argv[argc]!=NULL)
+              argc++;
+          }
+          int index = get_smallest_index();
+          add_job(argc,argv,pid);
+          jobs[index].status = 2;
+            show_status(index);
+          }
+          else{
+          tmp = WEXITSTATUS(ret);
+        }
+        break;
+    }
     }
   end:
     if (i == 1)
@@ -292,14 +344,7 @@ int execute(int argc, char **argv)
   }
 }
 
-void empty(int i)
-{
-  Job j = {
-      .status = -2,
-      .index = -1,
-      .command = {'\0'}};
-  jobs[i] = j;
-}
+
 
 int split(char *str, int *nbw, char **res)
 {
@@ -329,6 +374,30 @@ void init()
   for (size_t i = 0; i < 512; i++)
   {
     empty(i);
+  }
+}
+
+void update_jobs(){
+  while (num_jobs > 0)
+  {
+      pid_t p = waitpid(-1, NULL, WNOHANG | WUNTRACED);
+      if (p > 0)
+      {
+        int i = get_job_pid(p);
+          if (i != -1)
+          {
+            if (jobs[i].status == -1 ||jobs[i].status == 1)
+            {
+              show_status(i);
+              num_jobs--;
+              empty(i);
+            }else if(jobs[i].status == 2){
+              show_status(i);
+            }
+          }
+      }
+      else
+        break;
   }
 }
 
@@ -382,27 +451,7 @@ int main(int argc, char const *argv[])
       }
     }
   jobs:
-    while (num_jobs > 0)
-    {
-      pid_t p = waitpid(-1, NULL, WNOHANG);
-      if (p > 0)
-      {
-        for (int i = 0; i < 512; i++)
-        {
-          if (jobs[i].pid == p)
-          {
-            if (jobs[i].status == -1)
-              killed_status(jobs[i].index, jobs[i].pid, jobs[i].command);
-            else if (jobs[i].status == 1)
-              done_status(jobs[i].index, jobs[i].pid, jobs[i].command);
-            num_jobs--;
-            empty(i);
-          }
-        }
-      }
-      else
-        break;
-    }
+    update_jobs();
   }
 
 exit:

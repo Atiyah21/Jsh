@@ -21,26 +21,26 @@ void prompt(char *pro, int num_jobs)
 void running_status(int n, int pid, char *cmd )
 {
         char char_jobs[305];
-        sprintf(char_jobs, "[%d]   %d        Running      %s\n", n, pid, cmd);
+        sprintf(char_jobs, "[%d]   %d        Running      %s\n", n+1, pid, cmd);
         write(2, char_jobs, strlen(char_jobs));
 }
 
 void done_status(int n, int pid, char *cmd )
 {
         char char_jobs[300];
-        sprintf(char_jobs, "[%d]   %d        Done      %s\n", n, pid, cmd);
+        sprintf(char_jobs, "[%d]   %d        Done      %s\n", n+1, pid, cmd);
         write(2, char_jobs, strlen(char_jobs));
 }
 
 void killed_status(int n, int pid, char *cmd )
 {
         char char_jobs[302];
-        sprintf(char_jobs, "[%d]   %d        Killed      %s\n", n, pid, cmd);
+        sprintf(char_jobs, "[%d]   %d        Killed      %s\n", n+1, pid, cmd);
         write(2, char_jobs, strlen(char_jobs));
 }
 void stopped_status(int n, int pid, char *cmd )
 {
         char char_jobs[305];
-        sprintf(char_jobs, "[%d]   %d        Stopped      %s\n", n, pid, cmd);
+        sprintf(char_jobs, "[%d]   %d        Stopped      %s\n", n+1, pid, cmd);
         write(2, char_jobs, strlen(char_jobs));
 }
