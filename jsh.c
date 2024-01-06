@@ -33,10 +33,11 @@ static char prev_directory[PATH_MAX];
 void update_num_jobs()
 {
   int res = 0;
-  for (int i = 0; i < 128; i++)
+  for (int i = 0; i < 512; i++)
   {
-    if (jobs[i].pid != -1)
+    if (jobs[i].index != -1){
       res++;
+    }
   }
   num_jobs = res;
 }
@@ -61,7 +62,7 @@ int get_job_id(int k)
   }
   return -1;
 }
-int get_job_pid(int k)
+int get_job_pid(pid_t k)
 {
   for (int i = 0; i < 512; i++)
   {
@@ -71,12 +72,12 @@ int get_job_pid(int k)
   return -1;
 }
 
-void add_job(int argc, char **argv, pid_t pid)
+void add_job(int argc, char **argv, pid_t pid, int st)
 {
   Job j;
   j.pid = pid;
   j.index = get_smallest_index();
-  j.status = 1;
+  j.status = st;
   strcpy(j.command, argv[0]);
   int i = 1;
   for (; argv[i] != NULL; i++)
@@ -101,11 +102,11 @@ void show_status(int i)
 {
   if (jobs[i].status == -1)
     killed_status(i, jobs[i].pid, jobs[i].command);
-  if (jobs[i].status == 1)
+  else if (jobs[i].status == 1)
     done_status(i, jobs[i].pid, jobs[i].command);
-  if (jobs[i].status == 0)
+  else if (jobs[i].status == 0)
     running_status(i, jobs[i].pid, jobs[i].command);
-  if (jobs[i].status == 2)
+  else if (jobs[i].status == 2)
     stopped_status(i, jobs[i].pid, jobs[i].command);
 }
 
@@ -113,7 +114,6 @@ int execute(int argc, char **argv)
 {
   if (argc > 1 && strcmp(argv[argc - 1], "&") == 0)
   {
-
     argv[argc - 1] = NULL;
     argc--;
     pid = fork();
@@ -135,16 +135,16 @@ int execute(int argc, char **argv)
       Job j;
       j.pid = pid;
       j.index = get_smallest_index();
-      j.status = 1;
+      j.status = 0;
       strcpy(j.command, argv[0]);
       for (int i = 1; i < argc; i++)
       {
         strcat(j.command, " ");
         strcat(j.command, argv[i]);
       }
-      jobs[num_jobs] = j;
+      jobs[j.index] = j;
       num_jobs++;
-      running_status(j.index, jobs[num_jobs - 1].pid, jobs[num_jobs - 1].command);
+      running_status(j.index, jobs[j.index].pid, jobs[j.index].command);
       return 0;
     }
   }
@@ -237,7 +237,7 @@ int execute(int argc, char **argv)
             goto end;
           }
           kill(-jobs[i].pid, 15);
-          jobs[i].status = -1;
+          // jobs[i].status = -1;
           tmp = 0;
         }
         else if (argv[1][0] == '-')
@@ -254,17 +254,17 @@ int execute(int argc, char **argv)
               goto end;
             }
             kill(-jobs[i].pid, sig);
-            if (sig == 20)
-              jobs[i].status = 2;
-            else if (sig == 18)
-              jobs[i].status = 0;
-            else
-              jobs[i].status = -1;
+            // if (sig == 20)
+            //   jobs[i].status = 2;
+            // else if (sig == 18)
+            //   jobs[i].status = 0;
+            // else
+            //   jobs[i].status = -1;
             tmp = 0;
           }
           else
           {
-            int k = atoi(argv[2] + 1) - 1;
+            pid_t k = atoi(argv[2] + 1) - 1;
             int i = get_job_pid(k);
             if (i == -1)
             {
@@ -273,12 +273,12 @@ int execute(int argc, char **argv)
               goto end;
             }
             kill(jobs[i].pid, sig);
-            if (sig == 20)
-              jobs[i].status = 2;
-            else if (sig == 18)
-              jobs[i].status = 0;
-            else
-              jobs[i].status = -1;
+            // if (sig == 20)
+            //   jobs[i].status = 2;
+            // else if (sig == 18)
+            //   jobs[i].status = 0;
+            // else
+            //   jobs[i].status = -1;
             tmp = 0;
           }
         }
@@ -293,16 +293,17 @@ int execute(int argc, char **argv)
             goto end;
           }
           kill(jobs[i].pid, SIGTERM);
-          jobs[i].status = -1;
+          // jobs[i].status = -1;
           tmp = 0;
         }
       }
     }
     else if (strcmp(argv[0], "jobs") == 0)
     {
-      for (int i = 0; i < num_jobs; i++)
+      for (int i = 0; i < 512; i++)
       {
-        show_status(i);
+        if(jobs[i].index != -1)
+          show_status(i);
       }
       tmp = 0;
     }
@@ -310,11 +311,20 @@ int execute(int argc, char **argv)
     {
       switch (pid = fork())
       {
-      case 0:
+      case 0:;
+        struct sigaction action;
+        memset(&action, 0, sizeof(struct sigaction));
+        action.sa_handler = SIG_DFL; // Set handler to default
+        sigaction(SIGINT, &action, NULL);
+        sigaction(SIGTERM, &action, NULL);
+        sigaction(SIGTTIN, &action, NULL);
+        sigaction(SIGQUIT, &action, NULL);
+        sigaction(SIGTTOU, &action, NULL);
+        sigaction(SIGTSTP, &action, NULL);  
+        sigaction(SIGSTOP, &action, NULL);  
         execvp(argv[0], argv);
         exit(ret); // Normalement cette ligne ne s'execute jamais
       default:
-
         waitpid(pid, &ret, WUNTRACED);
         if (WIFSTOPPED(ret))
         {
@@ -326,7 +336,7 @@ int execute(int argc, char **argv)
               argc++;
           }
           int index = get_smallest_index();
-          add_job(argc, argv, pid);
+          add_job(argc, argv, pid, 2);
           jobs[index].status = 2;
           show_status(index);
         }
@@ -383,22 +393,30 @@ void init()
 void update_jobs()
 {
   while (num_jobs > 0)
-  {
-    pid_t p = waitpid(-1, NULL, WNOHANG | WUNTRACED);
+  {    
+    int tmp;
+    pid_t p = waitpid(-1, &tmp, WNOHANG | WUNTRACED | WCONTINUED);
     if (p > 0)
     {
       int i = get_job_pid(p);
       if (i != -1)
       {
-        if (jobs[i].status == -1 || jobs[i].status == 1)
-        {
+        if(WIFCONTINUED(tmp)){
+          jobs[i].status = 0;
+          show_status(i);
+        }else if(WIFSTOPPED(tmp)){
+          jobs[i].status = 2;
+          show_status(i); 
+        }else if(WIFEXITED(tmp)){
+          jobs[i].status = 1;
           show_status(i);
           num_jobs--;
           empty(i);
-        }
-        else if (jobs[i].status == 2)
-        {
+        }else{
+          jobs[i].status = -1;
           show_status(i);
+          num_jobs--;
+          empty(i);
         }
       }
     }
