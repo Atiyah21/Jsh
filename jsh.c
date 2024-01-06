@@ -124,6 +124,16 @@ int execute(int argc, char **argv)
     }
     else if (pid == 0)
     {
+      struct sigaction action;
+      memset(&action, 0, sizeof(struct sigaction));
+      action.sa_handler = SIG_DFL; // Set handler to default
+      sigaction(SIGINT, &action, NULL);
+      sigaction(SIGTERM, &action, NULL);
+      sigaction(SIGTTIN, &action, NULL);
+      sigaction(SIGQUIT, &action, NULL);
+      sigaction(SIGTTOU, &action, NULL);
+      sigaction(SIGTSTP, &action, NULL);  
+      sigaction(SIGSTOP, &action, NULL);  
       pid = getpid();
       setpgid(pid, pid);
       execvp(argv[0], argv);
