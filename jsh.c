@@ -35,7 +35,8 @@ void update_num_jobs()
   int res = 0;
   for (int i = 0; i < 512; i++)
   {
-    if (jobs[i].index != -1){
+    if (jobs[i].index != -1)
+    {
       res++;
     }
   }
@@ -98,16 +99,16 @@ void empty(int i)
   jobs[i] = j;
 }
 
-void show_status(int i)
+void show_status(int i, int sortie)
 {
   if (jobs[i].status == -1)
-    killed_status(i, jobs[i].pid, jobs[i].command);
+    killed_status(i, jobs[i].pid, jobs[i].command, sortie);
   else if (jobs[i].status == 1)
-    done_status(i, jobs[i].pid, jobs[i].command);
+    done_status(i, jobs[i].pid, jobs[i].command, sortie);
   else if (jobs[i].status == 0)
-    running_status(i, jobs[i].pid, jobs[i].command);
+    running_status(i, jobs[i].pid, jobs[i].command, sortie);
   else if (jobs[i].status == 2)
-    stopped_status(i, jobs[i].pid, jobs[i].command);
+    stopped_status(i, jobs[i].pid, jobs[i].command, sortie);
 }
 
 int execute(int argc, char **argv)
@@ -132,8 +133,8 @@ int execute(int argc, char **argv)
       sigaction(SIGTTIN, &action, NULL);
       sigaction(SIGQUIT, &action, NULL);
       sigaction(SIGTTOU, &action, NULL);
-      sigaction(SIGTSTP, &action, NULL);  
-      sigaction(SIGSTOP, &action, NULL);  
+      sigaction(SIGTSTP, &action, NULL);
+      sigaction(SIGSTOP, &action, NULL);
       pid = getpid();
       setpgid(pid, pid);
       execvp(argv[0], argv);
@@ -154,7 +155,7 @@ int execute(int argc, char **argv)
       }
       jobs[j.index] = j;
       num_jobs++;
-      running_status(j.index, jobs[j.index].pid, jobs[j.index].command);
+      running_status(j.index, jobs[j.index].pid, jobs[j.index].command, 2);
       return 0;
     }
   }
@@ -312,8 +313,8 @@ int execute(int argc, char **argv)
     {
       for (int i = 0; i < 512; i++)
       {
-        if(jobs[i].index != -1)
-          show_status(i);
+        if (jobs[i].index != -1)
+          show_status(i, 1);
       }
       tmp = 0;
     }
@@ -330,8 +331,8 @@ int execute(int argc, char **argv)
         sigaction(SIGTTIN, &action, NULL);
         sigaction(SIGQUIT, &action, NULL);
         sigaction(SIGTTOU, &action, NULL);
-        sigaction(SIGTSTP, &action, NULL);  
-        sigaction(SIGSTOP, &action, NULL);  
+        sigaction(SIGTSTP, &action, NULL);
+        sigaction(SIGSTOP, &action, NULL);
         execvp(argv[0], argv);
         exit(ret); // Normalement cette ligne ne s'execute jamais
       default:
@@ -348,7 +349,7 @@ int execute(int argc, char **argv)
           int index = get_smallest_index();
           add_job(argc, argv, pid, 2);
           jobs[index].status = 2;
-          show_status(index);
+          show_status(index, 2);
         }
         else
         {
@@ -403,7 +404,7 @@ void init()
 void update_jobs()
 {
   while (num_jobs > 0)
-  {    
+  {
     int tmp;
     pid_t p = waitpid(-1, &tmp, WNOHANG | WUNTRACED | WCONTINUED);
     if (p > 0)
@@ -411,20 +412,27 @@ void update_jobs()
       int i = get_job_pid(p);
       if (i != -1)
       {
-        if(WIFCONTINUED(tmp)){
+        if (WIFCONTINUED(tmp))
+        {
           jobs[i].status = 0;
-          show_status(i);
-        }else if(WIFSTOPPED(tmp)){
+          show_status(i, 2);
+        }
+        else if (WIFSTOPPED(tmp))
+        {
           jobs[i].status = 2;
-          show_status(i); 
-        }else if(WIFEXITED(tmp)){
+          show_status(i, 2);
+        }
+        else if (WIFEXITED(tmp))
+        {
           jobs[i].status = 1;
-          show_status(i);
+          show_status(i, 2);
           num_jobs--;
           empty(i);
-        }else{
+        }
+        else
+        {
           jobs[i].status = -1;
-          show_status(i);
+          show_status(i, 2);
           num_jobs--;
           empty(i);
         }
@@ -446,7 +454,7 @@ int main(int argc, char const *argv[])
   sigaction(SIGTTIN, &action, NULL);
   sigaction(SIGQUIT, &action, NULL);
   sigaction(SIGTTOU, &action, NULL);
-  sigaction(SIGTSTP, &action, NULL);  
+  sigaction(SIGTSTP, &action, NULL);
 
   init();
   rl_initialize();
