@@ -32,6 +32,27 @@ static int ret = 0;
 int pid;
 static char prev_directory[PATH_MAX];
 
+
+void fg(int job){
+  int job_index = get_job_id(job - 1);
+
+  pid_t pid = jobs[job_index].pid;
+  int status;
+
+  tcsetpgrp(STDIN_FILENO, getpgid(pid));
+
+  waitpid(pid, &status, WUNTRACED);
+
+  tcsetpgrp(STDIN_FILENO, getpid());
+
+    if (WIFSTOPPED(status)) {
+        jobs[job_index].status = 2;
+    } else {
+        jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1;
+    }
+}
+
+
 void update_num_jobs()
 {
   int res = 0;
@@ -65,6 +86,7 @@ int get_job_id(int k)
   }
   return -1;
 }
+
 int get_job_pid(pid_t k)
 {
   for (int i = 0; i < 512; i++)
@@ -282,6 +304,11 @@ int execute(int argc, char **argv)
       }
       else
         tmp = ret;
+    }
+    else if (strcmp(argv[0], "fg") == 0)
+    {
+      fg(atoi(argv[1] + 1));
+      
     }
     else if (strcmp(argv[0], "kill") == 0)
     {
