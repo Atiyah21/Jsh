@@ -8,6 +8,8 @@
 #include <signal.h>
 #include "affichage.h"
 
+int execute(int argc, char **argv);
+
 typedef struct
 {
   // pid -1 veut dire que c'est vide
@@ -111,6 +113,51 @@ void show_status(int i, int sortie)
     stopped_status(i, jobs[i].pid, jobs[i].command, sortie);
 }
 
+int command_pipe(char **ligne, int nbw){
+    int tmp = 0;
+    for (int i = 0; ligne[i] != NULL; i++)
+    {
+        if (strcmp(ligne[i], "|") == 0)
+        {
+            if (i + 1 >= nbw)
+            {
+                fprintf(stderr, "jsh: Missing arguement\n");
+                return -1;
+            }
+            else
+            {
+                int stin = dup(0);
+                int stout = dup(1);
+                int fd[2];
+                pipe(fd);
+                int pid = fork();
+                if (pid == 0)
+                {
+                    close(fd[0]);
+                    dup2(fd[1], STDOUT_FILENO);
+                    ligne[i] = NULL;
+                    execute(i,ligne);
+                    close(fd[1]);
+                    exit(0);
+                }
+                else
+                {
+                    close(fd[1]);
+                    dup2(fd[0], STDIN_FILENO);
+                    // ligne = ligne + i + 1;
+                    waitpid(pid, &ret, -1);
+                    tmp = execute(nbw - i - 1,ligne+i+1);
+                    close(fd[0]);
+                    dup2(stin, 0);
+                    dup2(stout, 1);
+                    return tmp;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
 int execute(int argc, char **argv)
 {
   if (argc > 1 && strcmp(argv[argc - 1], "&") == 0)
@@ -161,6 +208,9 @@ int execute(int argc, char **argv)
   }
   else
   {
+    int pip=command_pipe(argv,argc);
+    if(pip!=-1)
+      return pip;
     int tmp;
     int fd0 = dup(0), fd1 = dup(1), fd2 = dup(2);
     int i = redirection(argv, argc);
@@ -359,7 +409,7 @@ int execute(int argc, char **argv)
       }
     }
   end:
-    if (i == 1)
+    if (i == 1  || pip == 1)
     {
       close(fd);
       dup2(fd0, 0);
@@ -482,7 +532,7 @@ int main(int argc, char const *argv[])
       split(str, &nbw, ligne);
 
       if (ligne == NULL)
-        goto start;
+        goto start;//continue;
       else if (strcmp(ligne[0], "exit") == 0)
       {
         if (num_jobs != 0)
