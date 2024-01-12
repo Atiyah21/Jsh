@@ -13,4 +13,5 @@ extern void running_status(int,int,char*,int);
 extern void done_status(int,int,char*,int);
 extern void killed_status(int,int,char*,int);
 extern void stopped_status(int, int, char *,int);
+int next(char** arg);
 #endif
