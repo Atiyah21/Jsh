@@ -9,7 +9,7 @@ run : build
 	./$(EXEC)
 
 clean :
-	rm -rf $(EXEC) 
+	rm -rf $(EXEC) *.o
 
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $<
