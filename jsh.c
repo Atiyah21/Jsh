@@ -33,8 +33,8 @@ static int ret = 0;
 int pid;
 static char prev_directory[PATH_MAX];
 
-
-void fg(int job){
+void fg(int job)
+{
   int job_index = get_job_id(job - 1);
 
   pid_t pid = jobs[job_index].pid;
@@ -44,32 +44,34 @@ void fg(int job){
   waitpid(pid, &status, WUNTRACED);
   tcsetpgrp(STDIN_FILENO, getpid());
 
-  if (WIFSTOPPED(status)) {
-      jobs[job_index].status = 2;  // suspendu
+  if (WIFSTOPPED(status))
+  {
+    jobs[job_index].status = 2; // suspendu
   }
-  else {
-      jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1;  // Done ou Killed
-    }
+  else
+  {
+    jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1; // Done ou Killed
+  }
 
-    show_status(job_index, 2);
-    num_jobs--;
-    empty(job_index);
+  show_status(job_index, 2);
+  num_jobs--;
+  empty(job_index);
 }
 
-void bg(int job){
+void bg(int job)
+{
   int job_index = get_job_id(job - 1);
 
   pid_t pid = jobs[job_index].pid;
-  
-   if (kill(pid, SIGCONT) == -1) {
-        perror("Erreur bg: SIGCONT");
-        return;
-    }
 
-    jobs[job_index].status = 0;
+  if (kill(pid, SIGCONT) == -1)
+  {
+    perror("Erreur bg: SIGCONT");
+    return;
+  }
 
+  jobs[job_index].status = 0;
 }
-
 
 void update_num_jobs()
 {
@@ -153,49 +155,50 @@ void show_status(int i, int sortie)
     stopped_status(i, jobs[i].pid, jobs[i].command, sortie);
 }
 
-int command_pipe(char **ligne, int nbw){
-    int tmp = 0;
-    for (int i = 0; ligne[i] != NULL; i++)
+int command_pipe(char **ligne, int nbw)
+{
+  int tmp = 0;
+  for (int i = 0; ligne[i] != NULL; i++)
+  {
+    if (strcmp(ligne[i], "|") == 0)
     {
-        if (strcmp(ligne[i], "|") == 0)
+      if (i + 1 >= nbw)
+      {
+        fprintf(stderr, "jsh: Missing arguement\n");
+        return -1;
+      }
+      else
+      {
+        int stin = dup(0);
+        int stout = dup(1);
+        int fd[2];
+        pipe(fd);
+        int pid = fork();
+        if (pid == 0)
         {
-            if (i + 1 >= nbw)
-            {
-                fprintf(stderr, "jsh: Missing arguement\n");
-                return -1;
-            }
-            else
-            {
-                int stin = dup(0);
-                int stout = dup(1);
-                int fd[2];
-                pipe(fd);
-                int pid = fork();
-                if (pid == 0)
-                {
-                    close(fd[0]);
-                    dup2(fd[1], STDOUT_FILENO);
-                    ligne[i] = NULL;
-                    execute(i,ligne);
-                    close(fd[1]);
-                    exit(0);
-                }
-                else
-                {
-                    close(fd[1]);
-                    dup2(fd[0], STDIN_FILENO);
-                    // ligne = ligne + i + 1;
-                    waitpid(pid, &ret, -1);
-                    tmp = execute(nbw - i - 1,ligne+i+1);
-                    close(fd[0]);
-                    dup2(stin, 0);
-                    dup2(stout, 1);
-                    return tmp;
-                }
-            }
+          close(fd[0]);
+          dup2(fd[1], STDOUT_FILENO);
+          ligne[i] = NULL;
+          execute(i, ligne);
+          close(fd[1]);
+          exit(0);
         }
+        else
+        {
+          close(fd[1]);
+          dup2(fd[0], STDIN_FILENO);
+          // ligne = ligne + i + 1;
+          waitpid(pid, &ret, -1);
+          tmp = execute(nbw - i - 1, ligne + i + 1);
+          close(fd[0]);
+          dup2(stin, 0);
+          dup2(stout, 1);
+          return tmp;
+        }
+      }
     }
-    return -1;
+  }
+  return -1;
 }
 
 int execute(int argc, char **argv)
@@ -248,8 +251,8 @@ int execute(int argc, char **argv)
   }
   else
   {
-    int pip=command_pipe(argv,argc);
-    if(pip!=-1)
+    int pip = command_pipe(argv, argc);
+    if (pip != -1)
       return pip;
     int tmp;
     int fd0 = dup(0), fd1 = dup(1), fd2 = dup(2);
@@ -326,12 +329,10 @@ int execute(int argc, char **argv)
     else if (strcmp(argv[0], "fg") == 0)
     {
       fg(atoi(argv[1] + 1));
-      
     }
-     else if (strcmp(argv[0], "bg") == 0)
+    else if (strcmp(argv[0], "bg") == 0)
     {
       bg(atoi(argv[1] + 1));
-      
     }
     else if (strcmp(argv[0], "kill") == 0)
     {
@@ -411,48 +412,68 @@ int execute(int argc, char **argv)
     }
     else if (strcmp(argv[0], "jobs") == 0)
     {
-      
-  while (num_jobs > 0)
-  {
-      int tmp;
-      pid_t p = waitpid(-1, &tmp, WNOHANG | WUNTRACED | WCONTINUED);
-      if (p > 0)
+
+      while (num_jobs > 0)
       {
-        int i = get_job_pid(p);
-        if (i != -1)
+        int tmp;
+        pid_t p = waitpid(-1, &tmp, WNOHANG | WUNTRACED | WCONTINUED);
+        if (p > 0)
         {
-          if (WIFCONTINUED(tmp))
+          int i = get_job_pid(p);
+          if (i != -1)
           {
-            jobs[i].status = 0;
+            if (WIFCONTINUED(tmp))
+            {
+              jobs[i].status = 0;
+            }
+            else if (WIFSTOPPED(tmp))
+            {
+              jobs[i].status = 2;
+            }
+            else if (WIFEXITED(tmp))
+            {
+              jobs[i].status = 1;
+            }
+            else
+            {
+              jobs[i].status = -1;
+            }
           }
-          else if (WIFSTOPPED(tmp))
+        }
+        else
+          break;
+      }
+
+      if (argc == 2)
+      {
+        if (argv[1][0] == '%')
+        {
+          int n = atoi(argv[1] + 1) - 1;
+          if (jobs[n].index != -1)
+            show_status(n, 1);
+          if (jobs[n].status == 1 || jobs[n].status == -1)
           {
-            jobs[i].status = 2;
-          }
-          else if (WIFEXITED(tmp))
-          {
-            jobs[i].status = 1;
-          }
-          else
-          {
-            jobs[i].status = -1;
+            empty(n);
+            num_jobs--;
           }
         }
       }
       else
-        break;
-    }
-      for (int i = 0; i < 512; i++)
       {
-        if (jobs[i].index != -1)
-          show_status(i, 1);
-        if(jobs[i].status== 1 || jobs[i].status== -1 ){
-          empty(i);
-          num_jobs--;
+        for (int i = 0; i < 512; i++)
+        {
+          if (jobs[i].index != -1)
+            show_status(i, 1);
+          if (jobs[i].status == 1 || jobs[i].status == -1)
+          {
+            empty(i);
+            num_jobs--;
+          }
         }
       }
       tmp = 0;
     }
+
     else
     {
       switch (pid = fork())
@@ -494,7 +515,7 @@ int execute(int argc, char **argv)
       }
     }
   end:
-    if (i == 1  || pip == 1)
+    if (i == 1 || pip == 1)
     {
       close(fd);
       dup2(fd0, 0);
@@ -617,7 +638,7 @@ int main(int argc, char const *argv[])
       split(str, &nbw, ligne);
 
       if (ligne == NULL)
-        goto start;//continue;
+        goto start; // continue;
       else if (strcmp(ligne[0], "exit") == 0)
       {
         if (num_jobs != 0)
