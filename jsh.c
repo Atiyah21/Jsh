@@ -9,6 +9,7 @@
 #include "affichage.h"
 
 int execute(int argc, char **argv);
+int get_job_id(int k);
 
 typedef struct
 {
@@ -388,10 +389,45 @@ int execute(int argc, char **argv)
     }
     else if (strcmp(argv[0], "jobs") == 0)
     {
+      
+  while (num_jobs > 0)
+  {
+      int tmp;
+      pid_t p = waitpid(-1, &tmp, WNOHANG | WUNTRACED | WCONTINUED);
+      if (p > 0)
+      {
+        int i = get_job_pid(p);
+        if (i != -1)
+        {
+          if (WIFCONTINUED(tmp))
+          {
+            jobs[i].status = 0;
+          }
+          else if (WIFSTOPPED(tmp))
+          {
+            jobs[i].status = 2;
+          }
+          else if (WIFEXITED(tmp))
+          {
+            jobs[i].status = 1;
+          }
+          else
+          {
+            jobs[i].status = -1;
+          }
+        }
+      }
+      else
+        break;
+    }
       for (int i = 0; i < 512; i++)
       {
         if (jobs[i].index != -1)
           show_status(i, 1);
+        if(jobs[i].status== 1 || jobs[i].status== -1 ){
+          empty(i);
+          num_jobs--;
+        }
       }
       tmp = 0;
     }
