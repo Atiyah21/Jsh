@@ -5,6 +5,17 @@ int fd = -1;
  * -1 si erreur
  * 1 si il y a une redirection
  */
+
+int next(char** arg){
+    int i=0;
+    while(arg[i] != NULL){
+        if(strcmp(arg[i] , ")")==0)
+            return i;
+        i++;
+    }
+    return -1;
+}
+
 int redirection(char **ligne, int nbw)
 {
     if (nbw == 1)
