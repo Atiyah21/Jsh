@@ -222,9 +222,9 @@ int process_substitution(int nbw, char **ligne)
         // }
         // int e=0;
         char c[20];
-        sprintf(c, "/tmp/tmp%d", getpid());
-        // mkfifo(c,0666);// On cree un tube avec mkfifo
-        int file = open(c, O_RDWR | O_CREAT | O_EXCL, 0666);
+        sprintf(c, "/tmp/tube%d", getpid());
+        mkfifo(c,0666);// On cree un tube avec mkfifo | O_NONBLOCK
+        int file = open(c, O_RDWR | O_NONBLOCK );
         if (file == -1)
         {
           fprintf(stderr, "jsh: Process substitution error\n"); // TODO changer en write sur 2
