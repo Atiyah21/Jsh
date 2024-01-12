@@ -41,19 +41,22 @@ void fg(int job)
 {
   int job_index = get_job_id(job - 1);
   pid_t pid = jobs[job_index].pid;
+  if(jobs[job_index].status == 2)
+    if (kill(pid, SIGCONT) == -1)
+      perror("Erreur fg: SIGCONT");
   int status;
   tcsetpgrp(STDIN_FILENO, getpgid(pid));
   waitpid(pid, &status, WUNTRACED);
   tcsetpgrp(STDIN_FILENO, getpid());
-  if (WIFSTOPPED(status))
-  {
+  // struct sigaction action;
+  // memset(&action, 0, sizeof(struct sigaction));
+  if (WIFSTOPPED(status)){
     jobs[job_index].status = 2; // suspendu
+    show_status(job_index, 2);
+    return;
   }
-  else
-  {
-    jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1; // Done ou Killed
-  }
-  show_status(job_index, 2);
+  jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1; // Done ou Killed
+  // show_status(job_index, 2);
   num_jobs--;
   empty(job_index);
 }
@@ -69,8 +72,7 @@ void bg(int job)
     perror("Erreur bg: SIGCONT");
     return;
   }
-
-  jobs[job_index].status = 0;
+  jobs[job_index].status=0;
 }
 
 void update_num_jobs()
@@ -270,7 +272,7 @@ int process_substitution(int nbw, char **ligne)
         }
         nvligne[cpt] = NULL;
         tmp = execute(cpt, nvligne);
-        remove(c);
+        unlink(c);
         return tmp;
         // }
       }
@@ -545,13 +547,17 @@ int execute(int argc, char **argv)
       sigaction(SIGTERM, &action, NULL);
       sigaction(SIGTTIN, &action, NULL);
       sigaction(SIGQUIT, &action, NULL);
-      sigaction(SIGTTOU, &action, NULL);
+      // sigaction(SIGTTOU, &action, NULL);
       sigaction(SIGTSTP, &action, NULL);
       sigaction(SIGSTOP, &action, NULL);
+      int p =getpid();
+      setpgid(p,p);
+      tcsetpgrp(STDIN_FILENO, p);
       execvp(argv[0], argv);
       exit(ret); // Normalement cette ligne ne s'execute jamais
     default:
       waitpid(pid, &ret, WUNTRACED);
+      tcsetpgrp(STDIN_FILENO, getpid());
       if (WIFSTOPPED(ret))
       {
         tmp = 148;
