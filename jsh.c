@@ -41,16 +41,33 @@ void fg(int job){
   int status;
 
   tcsetpgrp(STDIN_FILENO, getpgid(pid));
-
   waitpid(pid, &status, WUNTRACED);
-
   tcsetpgrp(STDIN_FILENO, getpid());
 
-    if (WIFSTOPPED(status)) {
-        jobs[job_index].status = 2;
-    } else {
-        jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1;
+  if (WIFSTOPPED(status)) {
+      jobs[job_index].status = 2;  // suspendu
+  }
+  else {
+      jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1;  // Done ou Killed
     }
+
+    show_status(job_index, 2);
+    num_jobs--;
+    empty(job_index);
+}
+
+void bg(int job){
+  int job_index = get_job_id(job - 1);
+
+  pid_t pid = jobs[job_index].pid;
+  
+   if (kill(pid, SIGCONT) == -1) {
+        perror("Erreur bg: SIGCONT");
+        return;
+    }
+
+    jobs[job_index].status = 0;
+
 }
 
 
@@ -309,6 +326,11 @@ int execute(int argc, char **argv)
     else if (strcmp(argv[0], "fg") == 0)
     {
       fg(atoi(argv[1] + 1));
+      
+    }
+     else if (strcmp(argv[0], "bg") == 0)
+    {
+      bg(atoi(argv[1] + 1));
       
     }
     else if (strcmp(argv[0], "kill") == 0)
