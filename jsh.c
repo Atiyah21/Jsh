@@ -443,7 +443,6 @@ int execute(int argc, char **argv)
         else
           break;
       }
-
       if (argc == 2)
       {
         if (argv[1][0] == '%')
@@ -456,6 +455,14 @@ int execute(int argc, char **argv)
             empty(n);
             num_jobs--;
           }
+        }
+        else if (argv[1][0] == '-' && argv[1][1] == 't')
+        {
+          write(1, "pas fait\n",9);
+        }
+        else
+        {
+          write(1, "Option invalide\n", 16);
         }
       }
       else
