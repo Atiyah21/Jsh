@@ -458,14 +458,14 @@ int execute(int argc, char **argv)
         }
         else if (argv[1][0] == '-' && argv[1][1] == 't')
         {
-          write(1, "pas fait\n",9);
+          write(1, "pas fait\n", 9);
         }
         else
         {
           write(1, "Option invalide\n", 16);
         }
       }
-      else
+      else if (argc == 1)
       {
         for (int i = 0; i < 512; i++)
         {
