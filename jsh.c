@@ -219,10 +219,7 @@ int command_pipe(char **ligne, int nbw, int ret)
             }
             else
             {
-                if(special(ligne+i+1)==1){
-                    write(2, "jsh: Syntax error\n",24);
-                    return -1;
-                }
+
                 int stin = dup(0);
                 int stout = dup(1);
                 int fd[2];
@@ -264,14 +261,10 @@ int process_substitution(int nbw, char **ligne)
   {
     if (strcmp(ligne[i], "<(") == 0)
     {
-        if(special(ligne+i+1)==1){
-            write(2, "jsh: Syntax error\n",24);
-            return -1;
-        }
       int j = next(ligne + i);
       if (j == -1)
       {
-        fprintf(stderr, "jsh: Missing arguements\n");
+        write(2, "jsh: Missing arguements\n",25);
         return -1;
       }
       else
@@ -291,13 +284,12 @@ int process_substitution(int nbw, char **ligne)
           int file = open(c, O_RDWR | O_NONBLOCK );
           if (file == -1)
           {
-            fprintf(stderr, "jsh: Process substitution error\n"); // TODO changer en write sur 2
+            write(2, "jsh: Process substitution error\n",33);
             return -1;
           }
-          // printf("%s\n", ligne[i + 1]);
           dup2(file, STDOUT_FILENO);
           ligne =ligne + i + 1;
-          execvp(ligne[0], ligne); // TODO segmentation ici
+          execvp(ligne[0], ligne); 
           exit(0);
         }else{
         waitpid(pid, NULL, -1);
@@ -323,6 +315,11 @@ int process_substitution(int nbw, char **ligne)
           }
         }
         nvligne[cpt] = NULL;
+        for (size_t i = 0; i < cpt; i++)
+        {
+          printf("%s\n", nvligne[i]);
+        }
+        
         tmp = execute(cpt, nvligne);
         unlink(c);
         return tmp;
