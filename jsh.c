@@ -36,6 +36,67 @@ static int ret = 0;
 int pid;
 static char prev_directory[PATH_MAX];
 
+int printchildren_process_id(int pid, int space){
+
+  char p[PATH_MAX];
+  sprintf(p,"/proc/%d/task/%d/children",pid,pid);
+  int fd =open(p,O_RDONLY);
+  if(fd==-1){
+    perror("jsh: jobs -t Can't open children file");
+    return -1;
+  }
+  char b[1024];
+  int i =read(fd,b,1024);
+  close(fd);
+  if(i==-1){
+    perror("jsh: jobs -t Can't read children file");
+    return -1;
+  }
+  if(i==0) {
+    return 0;
+  }
+  b[i]='\0';
+  char *r[128] ;
+  int n=0;
+  split(b,&n,r);
+  for(int i=0;i<n;i++){
+    for (int j= 0; j < space; j++) {
+        printf(" ");
+    }
+    printf("%s ",r[i]);
+    char str2[PATH_MAX];
+    sprintf(p,"/proc/%d/stat",atoi(r[i]));
+    fd=open(p,O_RDONLY);
+    read(fd,str2,PATH_MAX);
+    strtok(str2," ");
+    strtok(NULL," ");//nom
+    strtok(NULL," ");
+    char *state=strtok(NULL," ");
+    if(strcmp(state,"T")==0)
+      printf("Stopped ");
+    else if(strcmp(state,"Z")==0)
+      printf("Zombie ");
+    else if(strcmp(state,"R"))
+      printf("Running ");
+    else if(strcmp(state,"S"))
+      printf("Sleeping ");
+    else if(strcmp(state,"X"))
+      printf("Killed ");
+    else
+      printf("Unknown ");
+
+    char str[PATH_MAX];
+    sprintf(p,"/proc/%d/cmdline",atoi(r[i]));
+    int fd =open(p,O_RDONLY);
+    read(fd,str,PATH_MAX);
+    close(fd);
+    printf("%s \n",str);
+
+    // printchildren_process_id(atoi(r[i]),space+2);
+  }
+  return 0;
+}
+
 void fg(int job)
 {
   int job_index = get_job_id(job - 1);
@@ -144,7 +205,133 @@ void empty(int i)
   jobs[i] = j;
 }
 
+int command_pipe(char **ligne, int nbw, int ret)
+{
+    int tmp = 0;
+    for (int i = 0; ligne[i] != NULL; i++)
+    {
+        if (strcmp(ligne[i], "|") == 0)
+        {
+            if (i + 1 >= nbw)
+            {
+                write(2, "jsh: Missing arguement\n",24); // TODO changer en write sur 2
+                return -1;
+            }
+            else
+            {
+                if(special(ligne+i+1)==1){
+                    write(2, "jsh: Syntax error\n",24);
+                    return -1;
+                }
+                int stin = dup(0);
+                int stout = dup(1);
+                int fd[2];
+                pipe(fd);
+                int pid = fork();
+                if (pid == 0)
+                {
+                    close(fd[0]);
+                    dup2(fd[1], STDOUT_FILENO);
+                    ligne[i] = NULL;
+                    int pi=getpid();
+                    setpgid(pi,pi);
+                    execvp(ligne[0], ligne );
+                    
+                    exit(0);
+                }
+                else
+                {   
+                    close(fd[1]);
+                    dup2(fd[0], STDIN_FILENO);
+                    // ligne = ligne + i + 1;
+                    waitpid(pid, &ret, -1);
+                    tmp = execute(nbw - i - 1, ligne + i + 1);
+                    close(fd[0]);
+                    dup2(stin, 0);
+                    dup2(stout, 1);
+                    return tmp;
+                }
+            }
+        }
+    }
+    return -1;
+}
 
+int process_substitution(int nbw, char **ligne)
+{
+  int tmp = 0;
+  for (int i = 0; ligne[i] != NULL; i++)
+  {
+    if (strcmp(ligne[i], "<(") == 0)
+    {
+        if(special(ligne+i+1)==1){
+            write(2, "jsh: Syntax error\n",24);
+            return -1;
+        }
+      int j = next(ligne + i);
+      if (j == -1)
+      {
+        fprintf(stderr, "jsh: Missing arguements\n");
+        return -1;
+      }
+      else
+      {
+        // if(i==-1){
+        //     fprintf(stderr, "jsh: Panthesis not closed\n");
+        //     return -1;
+        // }
+        // int e=0;
+        char c[20];
+        sprintf(c, "/tmp/tube%d", getpid());
+        ligne[i] = NULL;
+        ligne[i + j] = NULL;
+        int pid=fork();
+        if(pid==0){
+          mkfifo(c,0666);// On cree un tube avec mkfifo | O_NONBLOCK
+          int file = open(c, O_RDWR | O_NONBLOCK );
+          if (file == -1)
+          {
+            fprintf(stderr, "jsh: Process substitution error\n"); // TODO changer en write sur 2
+            return -1;
+          }
+          // printf("%s\n", ligne[i + 1]);
+          dup2(file, STDOUT_FILENO);
+          ligne =ligne + i + 1;
+          execvp(ligne[0], ligne); // TODO segmentation ici
+          exit(0);
+        }else{
+        waitpid(pid, NULL, -1);
+        for (int y = i; y < j + i + 1; y++)
+          ligne[y] = NULL;
+        char *nvligne[128];
+        int cpt = 0;
+        for (int s = 0; s < nbw; s++)
+        { // on parcourt ligne,
+          if (s == i)
+          {
+            //char str1[128];
+            //strcpy(str1, c); // nom du fichier créé
+            nvligne[cpt] = c;
+            cpt++;
+          }
+          else if (ligne[s] != NULL)
+          {
+            //char str2[128];
+            //strcpy(str2, ligne[s]);
+            nvligne[cpt] = ligne[s];
+            cpt++;
+          }
+        }
+        nvligne[cpt] = NULL;
+        tmp = execute(cpt, nvligne);
+        unlink(c);
+        return tmp;
+        }
+      }
+    }
+  }
+  return -1;
+}
 
 
 
@@ -459,7 +646,18 @@ int execute(int argc, char **argv)
     switch (pid = fork())
     {
     case 0:;
-      ignore_signal(false);
+      struct sigaction action;
+      memset(&action, 0, sizeof(struct sigaction));
+      action.sa_handler = SIG_DFL; // Set handler to default
+      sigaction(SIGINT, &action, NULL);
+      sigaction(SIGTERM, &action, NULL);
+      sigaction(SIGTTIN, &action, NULL);
+      sigaction(SIGQUIT, &action, NULL);
+      sigaction(SIGTSTP, &action, NULL);
+      sigaction(SIGSTOP, &action, NULL);      
+      int p =getpid();
+      setpgid(p,p);
+      tcsetpgrp(STDIN_FILENO, p);
       execvp(argv[0], argv);
       exit(ret); // Normalement cette ligne ne s'execute jamais
     default:
@@ -578,6 +776,8 @@ int main(int argc, char const *argv[])
   init();
   rl_initialize();
   rl_outstream = stderr;
+  int ppffff=getpid();
+  setpgid(ppffff,ppffff);
   char s[256];
   char *buf = NULL;
   int nbw = 0;
@@ -605,7 +805,7 @@ int main(int argc, char const *argv[])
       {
         if (num_jobs != 0)
         {
-          write(stderr, "Il y a des jobs en cours\n",25);
+          write(2, "Il y a des jobs en cours\n",25);
          ret = 1;
           goto jobs;
         }

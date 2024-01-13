@@ -13,6 +13,5 @@
 
 extern int redirection(char **, int);
 extern int fd;
-extern int process_substitution(int, char **);
-extern int command_pipe(char **, int, int);
+int special(char **arg);
 #endif
