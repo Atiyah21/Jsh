@@ -255,23 +255,19 @@ int process_substitution(int nbw, char **ligne)
         { // on parcourt ligne,
           if (s == i)
           {
-            char str1[128];
-            strcpy(str1, c); // nom du fichier créé
-            nvligne[cpt] = str1;
+            //char str1[128];
+            //strcpy(str1, c); // nom du fichier créé
+            nvligne[cpt] = c;
             cpt++;
           }
           else if (ligne[s] != NULL)
           {
-            char str2[128];
-            strcpy(str2, ligne[s]);
-            nvligne[cpt] = str2 ;
+            //char str2[128];
+            //strcpy(str2, ligne[s]);
+            nvligne[cpt] = ligne[s];
             cpt++;
           }
         }
-        for(int d=0; d<cpt; ++d){
-          printf("%s ", nvligne[d]);
-        }
-        printf("\n");
         nvligne[cpt] = NULL;
         tmp = execute(cpt, nvligne);
         remove(c);
