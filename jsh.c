@@ -39,6 +39,20 @@ static char prev_directory[PATH_MAX];
 
 
 void fg(int job){
+
+  struct sigaction action;
+          memset(&action, 0, sizeof(struct sigaction));
+          action.sa_handler = SIG_DFL; // Set handler to default
+          sigaction(SIGINT, &action, NULL);
+          sigaction(SIGTERM, &action, NULL);
+          sigaction(SIGTTIN, &action, NULL);
+          sigaction(SIGQUIT, &action, NULL);
+          sigaction(SIGTTOU, &action, NULL);
+          sigaction(SIGTSTP, &action, NULL);
+          sigaction(SIGSTOP, &action, NULL);
+          pid = getpid();
+          setpgid(pid, pid);
+
   int job_index = get_job_id(job - 1);
   pid_t pid = jobs[job_index].pid;
   int status;
@@ -57,6 +71,7 @@ void fg(int job){
 }
 
 void bg(int job){
+
   int job_index = get_job_id(job - 1);
 
   pid_t pid = jobs[job_index].pid;
