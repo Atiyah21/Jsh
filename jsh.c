@@ -10,7 +10,7 @@
 #include <signal.h>
 #include "affichage.h"
 
-int execute(int argc, char **argv);
+int execute(int argc, char **argv, int preplan);
 int get_job_id(int k);
 void empty(int i);
 void show_status(int i, int sortie);
@@ -232,7 +232,8 @@ int command_pipe(char **ligne, int nbw, int ret)
                     ligne[i] = NULL;
                     int pi=getpid();
                     setpgid(pi,pi);
-                    execvp(ligne[0], ligne );
+                    execute(i, ligne,0);
+
                     
                     exit(0);
                 }
@@ -242,7 +243,7 @@ int command_pipe(char **ligne, int nbw, int ret)
                     dup2(fd[0], STDIN_FILENO);
                     // ligne = ligne + i + 1;
                     waitpid(pid, &ret, -1);
-                    tmp = execute(nbw - i - 1, ligne + i + 1);
+                    tmp = execute(nbw - i - 1, ligne + i + 1,0);
                     close(fd[0]);
                     dup2(stin, 0);
                     dup2(stout, 1);
@@ -289,7 +290,7 @@ int process_substitution(int nbw, char **ligne)
           }
           dup2(file, STDOUT_FILENO);
           ligne =ligne + i + 1;
-          execvp(ligne[0], ligne); 
+          execute(nbw - i - 1,ligne,0); 
           exit(0);
         }else{
         waitpid(pid, NULL, -1);
@@ -320,7 +321,7 @@ int process_substitution(int nbw, char **ligne)
           printf("%s\n", nvligne[i]);
         }
         
-        tmp = execute(cpt, nvligne);
+        tmp = execute(cpt, nvligne,0);
         unlink(c);
         return tmp;
         }
@@ -373,7 +374,7 @@ void ignore_signal(bool ignore)
   }
 }
 
-int execute(int argc, char **argv)
+int execute(int argc, char **argv, int preplan)
 {
   int p_sub = process_substitution(argc, argv);
   if (p_sub != -1)
@@ -653,8 +654,10 @@ int execute(int argc, char **argv)
       sigaction(SIGTSTP, &action, NULL);
       sigaction(SIGSTOP, &action, NULL);      
       int p =getpid();
-      setpgid(p,p);
-      tcsetpgrp(STDIN_FILENO, p);
+      if(preplan==1){
+        setpgid(p,p);
+        tcsetpgrp(STDIN_FILENO, p);
+      }
       execvp(argv[0], argv);
       exit(ret); // Normalement cette ligne ne s'execute jamais
     default:
@@ -812,7 +815,7 @@ int main(int argc, char const *argv[])
       }
       else
       {
-        ret = execute(nbw, ligne);
+        ret = execute(nbw, ligne,1);
         if (fd != -1)
           close(fd);
         fd = -1;
