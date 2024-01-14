@@ -364,10 +364,12 @@ int execute(int argc, char **argv)
   else if (strcmp(argv[0], "fg") == 0)
   {
     fg(atoi(argv[1] + 1));
+    tmp = 0;
   }
   else if (strcmp(argv[0], "bg") == 0)
   {
     bg(atoi(argv[1] + 1));
+    tmp = 0;
   }
   else if (strcmp(argv[0], "kill") == 0)
   {
@@ -712,7 +714,7 @@ int main(int argc, char const *argv[])
           goto jobs;
         }
         else if (nbw == 2)
-          ret = atoi(ligne[1]);
+          ret = atoi(ligne[1]);    
         goto exit;
       }
       else
@@ -732,5 +734,6 @@ exit:
   {
     free(buf);
   }
+  //printf("ret: %d\n", ret);
   return ret;
 }
