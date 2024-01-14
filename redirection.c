@@ -1,6 +1,4 @@
 #include "redirection.h"
-#include <linux/limits.h>
-
 
 int fd = -1;
 /*@return 0 si pas de redirection
@@ -20,7 +18,11 @@ int next(char **arg)
     return -1;
 }
 
-
+int mauvaise_suite(char **ligne, int index)
+{
+    return ((strcmp(ligne[index], "|") == 0) | (strcmp(ligne[index], "<") == 0) | (strcmp(ligne[index], ">") == 0) | (strcmp(ligne[index], ">>") == 0) |
+            (strcmp(ligne[index], "<<") == 0) | (strcmp(ligne[index], "2>") == 0) |( strcmp(ligne[index], "<2") == 0) | (strcmp(ligne[index], "<|") == 0) | (strcmp(ligne[index], "|>") == 0));
+}
 
 int redirection(char **ligne, int nbw)
 {
@@ -33,7 +35,12 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                write(2, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
@@ -43,7 +50,7 @@ int redirection(char **ligne, int nbw)
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
-                    write(2, "jsh: File doesn't exist\n",24);
+                    write(2, "jsh: File doesn't exist\n", 24);
                     return -1;
                 }
                 tmp = 1;
@@ -53,7 +60,12 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                write(2, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
@@ -63,7 +75,7 @@ int redirection(char **ligne, int nbw)
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
-                    write(2, "jsh: cannot overwrite existing file\n",37);
+                    write(2, "jsh: cannot overwrite existing file\n", 37);
                     return -1;
                 }
                 tmp = 1;
@@ -73,7 +85,12 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                write(2, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
@@ -88,14 +105,19 @@ int redirection(char **ligne, int nbw)
         }
         else if (strcmp(ligne[i], ">|") == 0)
         {
+
             if (i + 1 >= nbw)
             {
-                write(2, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
             {
-
                 fd = open(ligne[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
                 dup2(fd, STDOUT_FILENO);
                 ligne[i] = NULL;
@@ -110,17 +132,22 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                write(2, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
             {
                 fd = open(ligne[i + 1], O_WRONLY | O_CREAT | O_EXCL, 0666);
-                dup2(fd, STDERR_FILENO);
+                dup2(fd, 2);
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
-                    write(2, "jsh: cannot overwrite existing file\n",37);
+                    write(2, "jsh: cannot overwrite existing file\n", 37);
                     return -1;
                 }
                 tmp = 1;
@@ -130,13 +157,18 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                write(1, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            else if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
             {
                 fd = open(ligne[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0666);
-                dup2(fd, STDERR_FILENO);
+                dup2(fd, 2);
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
@@ -149,13 +181,18 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                write(2, "jsh: Missing arguement\n",24);
+                write(2, "jsh: Missing arguement\n", 24);
+                return -1;
+            }
+            else if (mauvaise_suite(ligne, i + 1))
+            {
+                write(2, "unexpected token\n", 18);
                 return -1;
             }
             else
             {
                 fd = open(ligne[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                dup2(fd, STDERR_FILENO);
+                dup2(fd, 2);
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
@@ -167,5 +204,3 @@ int redirection(char **ligne, int nbw)
     }
     return tmp;
 }
-
-
