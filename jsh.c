@@ -14,6 +14,7 @@ int execute(int argc, char **argv);
 int get_job_id(int k);
 void empty(int i);
 void show_status(int i, int sortie);
+int split(char *str, int *nbw, char **res);
 
 typedef struct
 {
@@ -39,19 +40,22 @@ void fg(int job)
 {
   int job_index = get_job_id(job - 1);
   pid_t pid = jobs[job_index].pid;
+  if(jobs[job_index].status == 2)
+    if (kill(pid, SIGCONT) == -1)
+      perror("Erreur fg: SIGCONT");
   int status;
   tcsetpgrp(STDIN_FILENO, getpgid(pid));
   waitpid(pid, &status, WUNTRACED);
   tcsetpgrp(STDIN_FILENO, getpid());
-  if (WIFSTOPPED(status))
-  {
+  // struct sigaction action;
+  // memset(&action, 0, sizeof(struct sigaction));
+  if (WIFSTOPPED(status)){
     jobs[job_index].status = 2; // suspendu
+    show_status(job_index, 2);
+    return;
   }
-  else
-  {
-    jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1; // Done ou Killed
-  }
-  show_status(job_index, 2);
+  jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1; // Done ou Killed
+  // show_status(job_index, 2);
   num_jobs--;
   empty(job_index);
 }
@@ -67,8 +71,7 @@ void bg(int job)
     perror("Erreur bg: SIGCONT");
     return;
   }
-
-  jobs[job_index].status = 0;
+  jobs[job_index].status=0;
 }
 
 void update_num_jobs()
@@ -140,6 +143,68 @@ void empty(int i)
       .command = {'\0'}};
   jobs[i] = j;
 }
+
+
+int printchildren_process_id(int pid, int space){
+  char p[PATH_MAX];
+  sprintf(p,"/proc/%d/task/%d/children",pid,pid);
+  int fd =open(p,O_RDONLY);
+  if(fd==-1){
+    perror("jsh: jobs -t Can't open children file");
+    return -1;
+  }
+  char b[1024];
+  int i =read(fd,b,1024);
+  close(fd);
+  if(i==-1){
+    perror("jsh: jobs -t Can't read children file");
+    return -1;
+  }
+  if(i==0) {
+    return 0;
+  }
+  b[i]='\0';
+  char *r[128] ;
+  int n=0;
+  split(b,&n,r);
+  for(int i=0;i<n;i++){
+    for (int j= 0; j < space; j++) {
+        printf(" ");
+    }
+    printf("%s ",r[i]);
+    char str2[PATH_MAX];
+    sprintf(p,"/proc/%d/stat",atoi(r[i]));
+    fd=open(p,O_RDONLY);
+    read(fd,str2,PATH_MAX);
+    strtok(str2," ");
+    strtok(NULL," ");//nom
+    strtok(NULL," ");//
+    char *state=strtok(NULL," ");
+    if(strcmp(state,"T")==0)
+      printf("Stopped ");
+    else if(strcmp(state,"Z")==0)
+      printf("Zombie ");
+    else if(strcmp(state,"R"))
+      printf("Running ");
+    else if(strcmp(state,"S"))
+      printf("Sleeping ");
+    else if(strcmp(state,"X"))
+      printf("Killed ");
+    else
+      printf("Unknown ");
+
+    char str[PATH_MAX];
+    sprintf(p,"/proc/%d/cmdline",atoi(r[i]));
+    int fd =open(p,O_RDONLY);
+    read(fd,str,PATH_MAX);
+    close(fd);
+    printf("%s \n",str);
+
+    // printchildren_process_id(atoi(r[i]),space+2);
+  }
+  return 0;
+}
+
 
 void show_status(int i, int sortie)
 {
@@ -265,10 +330,12 @@ int execute(int argc, char **argv)
   else if (strcmp(argv[0], "fg") == 0)
   {
     fg(atoi(argv[1] + 1));
+    tmp = 0;
   }
   else if (strcmp(argv[0], "bg") == 0)
   {
     bg(atoi(argv[1] + 1));
+    tmp = 0;
   }
   else if (strcmp(argv[0], "kill") == 0)
   {
@@ -348,6 +415,32 @@ int execute(int argc, char **argv)
   }
   else if (strcmp(argv[0], "jobs") == 0)
   {
+    int gchild=0;
+    int specific_job=-1;
+    for(int i =0; i<argc;i++){
+      if(argv[i]==NULL) 
+        break;
+      if(strcmp(argv[i],"-t")==0)
+        gchild=1;
+      else if(argv[i][0]=='%')
+        specific_job=i;
+    }
+    if(specific_job!=-1){
+      int k = atoi(argv[specific_job] + 1) - 1;
+      int i = get_job_id(k);
+      if (i == -1)
+      {
+        printf("erreur pas de processus %d\n", k);
+        tmp = 1;
+        goto end;
+      }
+      show_status(i, 1);
+      if(gchild==1){
+        printchildren_process_id(jobs[i].pid,6);
+      }
+      tmp = 0;
+      goto end;
+    }
     while (num_jobs > 0)
     {
       int tmp;
@@ -380,8 +473,12 @@ int execute(int argc, char **argv)
     }
     for (int i = 0; i < 512; i++)
     {
-      if (jobs[i].index != -1)
+      if (jobs[i].index != -1){
         show_status(i, 1);
+        if(gchild==1){
+          printchildren_process_id(jobs[i].pid,6);
+        }
+      }
       if (jobs[i].status == 1 || jobs[i].status == -1)
       {
         empty(i);
@@ -437,6 +534,7 @@ int execute(int argc, char **argv)
       exit(ret); // Normalement cette ligne ne s'execute jamais
     default:
       waitpid(pid, &ret, WUNTRACED);
+      tcsetpgrp(STDIN_FILENO, getpid());
       if (WIFSTOPPED(ret))
       {
         tmp = 148;
@@ -583,7 +681,7 @@ int main(int argc, char const *argv[])
           goto jobs;
         }
         else if (nbw == 2)
-          ret = atoi(ligne[1]);
+          ret = atoi(ligne[1]);    
         goto exit;
       }
       else
@@ -603,5 +701,6 @@ exit:
   {
     free(buf);
   }
+  //printf("ret: %d\n", ret);
   return ret;
 }
