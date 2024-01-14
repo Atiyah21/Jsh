@@ -40,7 +40,7 @@ void fg(int job)
 {
   int job_index = get_job_id(job - 1);
   pid_t pid = jobs[job_index].pid;
-  if(jobs[job_index].status == 2)
+  if (jobs[job_index].status == 2)
     if (kill(pid, SIGCONT) == -1)
       perror("Erreur fg: SIGCONT");
   int status;
@@ -49,7 +49,8 @@ void fg(int job)
   tcsetpgrp(STDIN_FILENO, getpid());
   // struct sigaction action;
   // memset(&action, 0, sizeof(struct sigaction));
-  if (WIFSTOPPED(status)){
+  if (WIFSTOPPED(status))
+  {
     jobs[job_index].status = 2; // suspendu
     show_status(job_index, 2);
     return;
@@ -71,7 +72,7 @@ void bg(int job)
     perror("Erreur bg: SIGCONT");
     return;
   }
-  jobs[job_index].status=0;
+  jobs[job_index].status = 0;
 }
 
 void update_num_jobs()
@@ -144,10 +145,6 @@ void empty(int i)
   jobs[i] = j;
 }
 
-
-
-
-
 void show_status(int i, int sortie)
 {
   if (jobs[i].status == -1)
@@ -166,7 +163,7 @@ void ignore_signal(bool ignore)
   {
     struct sigaction action;
     memset(&action, 0, sizeof(struct sigaction));
-    action.sa_handler = SIG_IGN;// Set handler to ignore the following signals
+    action.sa_handler = SIG_IGN; // Set handler to ignore the following signals
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGTTIN, &action, NULL);
@@ -345,17 +342,19 @@ int execute(int argc, char **argv)
   }
   else if (strcmp(argv[0], "jobs") == 0)
   {
-    int gchild=0;
-    int specific_job=-1;
-    for(int i =0; i<argc;i++){
-      if(argv[i]==NULL) 
+    int gchild = 0;
+    int specific_job = -1;
+    for (int i = 0; i < argc; i++)
+    {
+      if (argv[i] == NULL)
         break;
-      if(strcmp(argv[i],"-t")==0)
-        gchild=1;
-      else if(argv[i][0]=='%')
-        specific_job=i;
+      if (strcmp(argv[i], "-t") == 0)
+        gchild = 1;
+      else if (argv[i][0] == '%')
+        specific_job = i;
     }
-    if(specific_job!=-1){
+    if (specific_job != -1)
+    {
       int k = atoi(argv[specific_job] + 1) - 1;
       int i = get_job_id(k);
       if (i == -1)
@@ -365,8 +364,9 @@ int execute(int argc, char **argv)
         goto end;
       }
       show_status(i, 1);
-      if(gchild==1){
-        printchildren_process_id(jobs[i].pid,6);
+      if (gchild == 1)
+      {
+        printchildren_process_id(jobs[i].pid, 6);
       }
       tmp = 0;
       goto end;
@@ -403,10 +403,12 @@ int execute(int argc, char **argv)
     }
     for (int i = 0; i < 512; i++)
     {
-      if (jobs[i].index != -1){
+      if (jobs[i].index != -1)
+      {
         show_status(i, 1);
-        if(gchild==1){
-          printchildren_process_id(jobs[i].pid,6);
+        if (gchild == 1)
+        {
+          printchildren_process_id(jobs[i].pid, 6);
         }
       }
       if (jobs[i].status == 1 || jobs[i].status == -1)
@@ -605,12 +607,12 @@ int main(int argc, char const *argv[])
       {
         if (num_jobs != 0)
         {
-          write(stderr, "Il y a des jobs en cours\n",25);
-         ret = 1;
+          write(stderr, "Il y a des jobs en cours\n", 25);
+          ret = 1;
           goto jobs;
         }
         else if (nbw == 2)
-          ret = atoi(ligne[1]);    
+          ret = atoi(ligne[1]);
         goto exit;
       }
       else
@@ -630,6 +632,6 @@ exit:
   {
     free(buf);
   }
-  //printf("ret: %d\n", ret);
+  // printf("ret: %d\n", ret);
   return ret;
 }
