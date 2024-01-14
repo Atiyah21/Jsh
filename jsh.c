@@ -36,63 +36,67 @@ static int ret = 0;
 int pid;
 static char prev_directory[PATH_MAX];
 
-int printchildren_process_id(int pid, int space){
+int printchildren_process_id(int pid, int space)
+{
 
   char p[PATH_MAX];
-  sprintf(p,"/proc/%d/task/%d/children",pid,pid);
-  int fd =open(p,O_RDONLY);
-  if(fd==-1){
+  sprintf(p, "/proc/%d/task/%d/children", pid, pid);
+  int fd = open(p, O_RDONLY);
+  if (fd == -1)
+  {
     perror("jsh: jobs -t Can't open children file");
     return -1;
   }
   char b[1024];
-  int i =read(fd,b,1024);
+  int i = read(fd, b, 1024);
   close(fd);
-  if(i==-1){
+  if (i == -1)
+  {
     perror("jsh: jobs -t Can't read children file");
     return -1;
   }
-  if(i==0) {
+  if (i == 0)
+  {
     return 0;
   }
-  b[i]='\0';
-  char *r[128] ;
-  int n=0;
-  split(b,&n,r);
-  for(int i=0;i<n;i++){
-    for (int j= 0; j < space; j++) {
-        printf(" ");
+  b[i] = '\0';
+  char *r[128];
+  int n = 0;
+  split(b, &n, r);
+  for (int i = 0; i < n; i++)
+  {
+    for (int j = 0; j < space; j++)
+    {
+      printf(" ");
     }
-    printf("%s ",r[i]);
+    printf("%s ", r[i]);
     char str2[PATH_MAX];
-    sprintf(p,"/proc/%d/stat",atoi(r[i]));
-    fd=open(p,O_RDONLY);
-    read(fd,str2,PATH_MAX);
-    strtok(str2," ");
-    strtok(NULL," ");//nom
-    strtok(NULL," ");
-    char *state=strtok(NULL," ");
-    if(strcmp(state,"T")==0)
+    sprintf(p, "/proc/%d/stat", atoi(r[i]));
+    fd = open(p, O_RDONLY);
+    read(fd, str2, PATH_MAX);
+    strtok(str2, " ");
+    strtok(NULL, " "); // nom
+    strtok(NULL, " ");
+    char *state = strtok(NULL, " ");
+    if (strcmp(state, "T") == 0)
       printf("Stopped ");
-    else if(strcmp(state,"Z")==0)
+    else if (strcmp(state, "Z") == 0)
       printf("Zombie ");
-    else if(strcmp(state,"R"))
+    else if (strcmp(state, "R"))
       printf("Running ");
-    else if(strcmp(state,"S"))
+    else if (strcmp(state, "S"))
       printf("Sleeping ");
-    else if(strcmp(state,"X"))
+    else if (strcmp(state, "X"))
       printf("Killed ");
     else
       printf("Unknown ");
 
     char str[PATH_MAX];
-    sprintf(p,"/proc/%d/cmdline",atoi(r[i]));
-    int fd =open(p,O_RDONLY);
-    read(fd,str,PATH_MAX);
+    sprintf(p, "/proc/%d/cmdline", atoi(r[i]));
+    int fd = open(p, O_RDONLY);
+    read(fd, str, PATH_MAX);
     close(fd);
-    printf("%s \n",str);
-
-    // printchildren_process_id(atoi(r[i]),space+2);
+    printf("%s \n", str);
   }
   return 0;
 }
@@ -101,22 +105,20 @@ void fg(int job)
 {
   int job_index = get_job_id(job - 1);
   pid_t pid = jobs[job_index].pid;
-  if(jobs[job_index].status == 2)
+  if (jobs[job_index].status == 2)
     if (kill(pid, SIGCONT) == -1)
       perror("Erreur fg: SIGCONT");
   int status;
   tcsetpgrp(STDIN_FILENO, getpgid(pid));
   waitpid(pid, &status, WUNTRACED);
   tcsetpgrp(STDIN_FILENO, getpid());
-  // struct sigaction action;
-  // memset(&action, 0, sizeof(struct sigaction));
-  if (WIFSTOPPED(status)){
+  if (WIFSTOPPED(status))
+  {
     jobs[job_index].status = 2; // suspendu
     show_status(job_index, 2);
     return;
   }
   jobs[job_index].status = (WIFEXITED(status)) ? 1 : -1; // Done ou Killed
-  // show_status(job_index, 2);
   num_jobs--;
   empty(job_index);
 }
@@ -132,7 +134,7 @@ void bg(int job)
     perror("Erreur bg: SIGCONT");
     return;
   }
-  jobs[job_index].status=0;
+  jobs[job_index].status = 0;
 }
 
 void update_num_jobs()
@@ -207,52 +209,55 @@ void empty(int i)
 
 int command_pipe(char **ligne, int nbw, int ret)
 {
-    int tmp = 0;
-    for (int i = 0; ligne[i] != NULL; i++)
+  int tmp = 0;
+  for (int i = 0; ligne[i] != NULL; i++)
+  {
+    if (strcmp(ligne[i], "|") == 0)
     {
-        if (strcmp(ligne[i], "|") == 0)
+      if (i + 1 >= nbw)
+      {
+        write(2, "jsh: Missing arguement\n", 24); // TODO changer en write sur 2
+        return -2;
+      }
+      if (mauvaise_suite(ligne, i + 1))
+      {
+        write(2, "unexpected token\n", 18);
+        return -2;
+      }
+      else
+      {
+
+        int stin = dup(0);
+        int stout = dup(1);
+        int fd[2];
+        pipe(fd);
+        int pid = fork();
+        if (pid == 0)
         {
-            if (i + 1 >= nbw)
-            {
-                write(2, "jsh: Missing arguement\n",24); // TODO changer en write sur 2
-                return -1;
-            }
-            else
-            {
+          close(fd[0]);
+          dup2(fd[1], STDOUT_FILENO);
+          ligne[i] = NULL;
+          int pi = getpid();
+          setpgid(pi, pi);
+          execute(i, ligne, 0);
 
-                int stin = dup(0);
-                int stout = dup(1);
-                int fd[2];
-                pipe(fd);
-                int pid = fork();
-                if (pid == 0)
-                {
-                    close(fd[0]);
-                    dup2(fd[1], STDOUT_FILENO);
-                    ligne[i] = NULL;
-                    int pi=getpid();
-                    setpgid(pi,pi);
-                    execute(i, ligne,0);
-
-                    
-                    exit(0);
-                }
-                else
-                {   
-                    close(fd[1]);
-                    dup2(fd[0], STDIN_FILENO);
-                    // ligne = ligne + i + 1;
-                    waitpid(pid, &ret, -1);
-                    tmp = execute(nbw - i - 1, ligne + i + 1,0);
-                    close(fd[0]);
-                    dup2(stin, 0);
-                    dup2(stout, 1);
-                    return tmp;
-                }
-            }
+          exit(0);
         }
+        else
+        {
+          close(fd[1]);
+          dup2(fd[0], STDIN_FILENO);
+          waitpid(pid, &ret, -1);
+          tmp = execute(nbw - i - 1, ligne + i + 1, 0);
+          close(fd[0]);
+          dup2(stin, 0);
+          dup2(stout, 1);
+          return tmp;
+        }
+      }
     }
-    return -1;
+  }
+  return -1;
 }
 
 int process_substitution(int nbw, char **ligne)
@@ -265,73 +270,60 @@ int process_substitution(int nbw, char **ligne)
       int j = next(ligne + i);
       if (j == -1)
       {
-        write(2, "jsh: Missing arguements\n",25);
+        write(2, "jsh: Missing arguements\n", 25);
         return -1;
       }
       else
       {
-        // if(i==-1){
-        //     fprintf(stderr, "jsh: Panthesis not closed\n");
-        //     return -1;
-        // }
-        // int e=0;
         char c[20];
         sprintf(c, "/tmp/tube%d", getpid());
         ligne[i] = NULL;
         ligne[i + j] = NULL;
-        int pid=fork();
-        if(pid==0){
-          mkfifo(c,0666);// On cree un tube avec mkfifo | O_NONBLOCK
-          int file = open(c, O_RDWR | O_NONBLOCK );
+        int pid = fork();
+        if (pid == 0)
+        {
+          mkfifo(c, 0666); // On cree un tube avec mkfifo | O_NONBLOCK
+          int file = open(c, O_RDWR | O_NONBLOCK);
           if (file == -1)
           {
-            write(2, "jsh: Process substitution error\n",33);
+            write(2, "jsh: Process substitution error\n", 33);
             return -1;
           }
           dup2(file, STDOUT_FILENO);
-          ligne =ligne + i + 1;
-          execute(nbw - i - 1,ligne,0); 
+          ligne = ligne + i + 1;
+          execute(nbw - i - 1, ligne, 0);
           exit(0);
-        }else{
-        waitpid(pid, NULL, -1);
-        for (int y = i; y < j + i + 1; y++)
-          ligne[y] = NULL;
-        char *nvligne[128];
-        int cpt = 0;
-        for (int s = 0; s < nbw; s++)
-        { // on parcourt ligne,
-          if (s == i)
-          {
-            //char str1[128];
-            //strcpy(str1, c); // nom du fichier créé
-            nvligne[cpt] = c;
-            cpt++;
-          }
-          else if (ligne[s] != NULL)
-          {
-            //char str2[128];
-            //strcpy(str2, ligne[s]);
-            nvligne[cpt] = ligne[s];
-            cpt++;
-          }
         }
-        nvligne[cpt] = NULL;
-        for (size_t i = 0; i < cpt; i++)
+        else
         {
-          printf("%s\n", nvligne[i]);
-        }
-        
-        tmp = execute(cpt, nvligne,0);
-        unlink(c);
-        return tmp;
+          waitpid(pid, NULL, -1);
+          for (int y = i; y < j + i + 1; y++)
+            ligne[y] = NULL;
+          char *nvligne[128];
+          int cpt = 0;
+          for (int s = 0; s < nbw; s++)
+          { // on parcourt ligne,
+            if (s == i)
+            {
+              nvligne[cpt] = c;
+              cpt++;
+            }
+            else if (ligne[s] != NULL)
+            {
+              nvligne[cpt] = ligne[s];
+              cpt++;
+            }
+          }
+          nvligne[cpt] = NULL;
+          tmp = execute(cpt, nvligne, 0);
+          unlink(c);
+          return tmp;
         }
       }
     }
   }
   return -1;
 }
-
-
 
 void show_status(int i, int sortie)
 {
@@ -351,7 +343,7 @@ void ignore_signal(bool ignore)
   {
     struct sigaction action;
     memset(&action, 0, sizeof(struct sigaction));
-    action.sa_handler = SIG_IGN;// Set handler to ignore the following signals
+    action.sa_handler = SIG_IGN; // Set handler to ignore the following signals
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGTTIN, &action, NULL);
@@ -530,17 +522,19 @@ int execute(int argc, char **argv, int preplan)
   }
   else if (strcmp(argv[0], "jobs") == 0)
   {
-    int gchild=0;
-    int specific_job=-1;
-    for(int i =0; i<argc;i++){
-      if(argv[i]==NULL) 
+    int gchild = 0;
+    int specific_job = -1;
+    for (int i = 0; i < argc; i++)
+    {
+      if (argv[i] == NULL)
         break;
-      if(strcmp(argv[i],"-t")==0)
-        gchild=1;
-      else if(argv[i][0]=='%')
-        specific_job=i;
+      if (strcmp(argv[i], "-t") == 0)
+        gchild = 1;
+      else if (argv[i][0] == '%')
+        specific_job = i;
     }
-    if(specific_job!=-1){
+    if (specific_job != -1)
+    {
       int k = atoi(argv[specific_job] + 1) - 1;
       int i = get_job_id(k);
       if (i == -1)
@@ -550,8 +544,9 @@ int execute(int argc, char **argv, int preplan)
         goto end;
       }
       show_status(i, 1);
-      if(gchild==1){
-        printchildren_process_id(jobs[i].pid,6);
+      if (gchild == 1)
+      {
+        printchildren_process_id(jobs[i].pid, 6);
       }
       tmp = 0;
       goto end;
@@ -588,10 +583,12 @@ int execute(int argc, char **argv, int preplan)
     }
     for (int i = 0; i < 512; i++)
     {
-      if (jobs[i].index != -1){
+      if (jobs[i].index != -1)
+      {
         show_status(i, 1);
-        if(gchild==1){
-          printchildren_process_id(jobs[i].pid,6);
+        if (gchild == 1)
+        {
+          printchildren_process_id(jobs[i].pid, 6);
         }
       }
       if (jobs[i].status == 1 || jobs[i].status == -1)
@@ -652,10 +649,11 @@ int execute(int argc, char **argv, int preplan)
       sigaction(SIGTTIN, &action, NULL);
       sigaction(SIGQUIT, &action, NULL);
       sigaction(SIGTSTP, &action, NULL);
-      sigaction(SIGSTOP, &action, NULL);      
-      int p =getpid();
-      if(preplan==1){
-        setpgid(p,p);
+      sigaction(SIGSTOP, &action, NULL);
+      int p = getpid();
+      if (preplan == 1)
+      {
+        setpgid(p, p);
         tcsetpgrp(STDIN_FILENO, p);
       }
       execvp(argv[0], argv);
@@ -776,8 +774,8 @@ int main(int argc, char const *argv[])
   init();
   rl_initialize();
   rl_outstream = stderr;
-  int ppffff=getpid();
-  setpgid(ppffff,ppffff);
+  int ppffff = getpid();
+  setpgid(ppffff, ppffff);
   char s[256];
   char *buf = NULL;
   int nbw = 0;
@@ -805,17 +803,17 @@ int main(int argc, char const *argv[])
       {
         if (num_jobs != 0)
         {
-          write(2, "Il y a des jobs en cours\n",25);
-         ret = 1;
+          write(2, "Il y a des jobs en cours\n", 25);
+          ret = 1;
           goto jobs;
         }
         else if (nbw == 2)
-          ret = atoi(ligne[1]);    
+          ret = atoi(ligne[1]);
         goto exit;
       }
       else
       {
-        ret = execute(nbw, ligne,1);
+        ret = execute(nbw, ligne, 1);
         if (fd != -1)
           close(fd);
         fd = -1;
@@ -830,6 +828,6 @@ exit:
   {
     free(buf);
   }
-  //printf("ret: %d\n", ret);
+  // printf("ret: %d\n", ret);
   return ret;
 }
