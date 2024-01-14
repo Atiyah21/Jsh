@@ -32,8 +32,6 @@ typedef struct
 Job jobs[512];
 int num_jobs = 0;
 static int ret = 0;
-// char *s = NULL;
-
 int pid;
 static char prev_directory[PATH_MAX];
 
@@ -153,6 +151,35 @@ void show_status(int i, int sortie)
     running_status(i, jobs[i].pid, jobs[i].command, sortie);
   else if (jobs[i].status == 2)
     stopped_status(i, jobs[i].pid, jobs[i].command, sortie);
+}
+
+void ignore_signal(bool ignore)
+{
+  if (ignore)
+  {
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = SIG_IGN;// Set handler to ignore the following signals
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGTTIN, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTTOU, &action, NULL);
+    sigaction(SIGTSTP, &action, NULL);
+  }
+  else
+  {
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = SIG_DFL; // Set handler to default
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGTTIN, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTTOU, &action, NULL);
+    sigaction(SIGTSTP, &action, NULL);
+    sigaction(SIGSTOP, &action, NULL);
+  }
 }
 
 int execute(int argc, char **argv)
@@ -375,16 +402,7 @@ int execute(int argc, char **argv)
     }
     else if (pid == 0)
     {
-      struct sigaction action;
-      memset(&action, 0, sizeof(struct sigaction));
-      action.sa_handler = SIG_DFL; // Set handler to default
-      sigaction(SIGINT, &action, NULL);
-      sigaction(SIGTERM, &action, NULL);
-      sigaction(SIGTTIN, &action, NULL);
-      sigaction(SIGQUIT, &action, NULL);
-      sigaction(SIGTTOU, &action, NULL);
-      sigaction(SIGTSTP, &action, NULL);
-      sigaction(SIGSTOP, &action, NULL);
+      ignore_signal(false);
       pid = getpid();
       setpgid(pid, pid);
       execvp(argv[0], argv);
@@ -414,16 +432,7 @@ int execute(int argc, char **argv)
     switch (pid = fork())
     {
     case 0:;
-      struct sigaction action;
-      memset(&action, 0, sizeof(struct sigaction));
-      action.sa_handler = SIG_DFL; // Set handler to default
-      sigaction(SIGINT, &action, NULL);
-      sigaction(SIGTERM, &action, NULL);
-      sigaction(SIGTTIN, &action, NULL);
-      sigaction(SIGQUIT, &action, NULL);
-      sigaction(SIGTTOU, &action, NULL);
-      sigaction(SIGTSTP, &action, NULL);
-      sigaction(SIGSTOP, &action, NULL);
+      ignore_signal(false);
       execvp(argv[0], argv);
       exit(ret); // Normalement cette ligne ne s'execute jamais
     default:
@@ -536,15 +545,7 @@ void update_jobs()
 int main(int argc, char const *argv[])
 {
 
-  struct sigaction action;
-  memset(&action, 0, sizeof(struct sigaction));
-  action.sa_handler = SIG_IGN;
-  sigaction(SIGINT, &action, NULL);
-  sigaction(SIGTERM, &action, NULL);
-  sigaction(SIGTTIN, &action, NULL);
-  sigaction(SIGQUIT, &action, NULL);
-  sigaction(SIGTTOU, &action, NULL);
-  sigaction(SIGTSTP, &action, NULL);
+  ignore_signal(true);
 
   init();
   rl_initialize();
