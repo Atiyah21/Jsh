@@ -145,65 +145,7 @@ void empty(int i)
 }
 
 
-int printchildren_process_id(int pid, int space){
-  char p[PATH_MAX];
-  sprintf(p,"/proc/%d/task/%d/children",pid,pid);
-  int fd =open(p,O_RDONLY);
-  if(fd==-1){
-    perror("jsh: jobs -t Can't open children file");
-    return -1;
-  }
-  char b[1024];
-  int i =read(fd,b,1024);
-  close(fd);
-  if(i==-1){
-    perror("jsh: jobs -t Can't read children file");
-    return -1;
-  }
-  if(i==0) {
-    return 0;
-  }
-  b[i]='\0';
-  char *r[128] ;
-  int n=0;
-  split(b,&n,r);
-  for(int i=0;i<n;i++){
-    for (int j= 0; j < space; j++) {
-        printf(" ");
-    }
-    printf("%s ",r[i]);
-    char str2[PATH_MAX];
-    sprintf(p,"/proc/%d/stat",atoi(r[i]));
-    fd=open(p,O_RDONLY);
-    read(fd,str2,PATH_MAX);
-    strtok(str2," ");
-    strtok(NULL," ");//nom
-    strtok(NULL," ");//
-    char *state=strtok(NULL," ");
-    if(strcmp(state,"T")==0)
-      printf("Stopped ");
-    else if(strcmp(state,"Z")==0)
-      printf("Zombie ");
-    else if(strcmp(state,"R"))
-      printf("Running ");
-    else if(strcmp(state,"S"))
-      printf("Sleeping ");
-    else if(strcmp(state,"X"))
-      printf("Killed ");
-    else
-      printf("Unknown ");
 
-    char str[PATH_MAX];
-    sprintf(p,"/proc/%d/cmdline",atoi(r[i]));
-    int fd =open(p,O_RDONLY);
-    read(fd,str,PATH_MAX);
-    close(fd);
-    printf("%s \n",str);
-
-    // printchildren_process_id(atoi(r[i]),space+2);
-  }
-  return 0;
-}
 
 
 void show_status(int i, int sortie)
@@ -369,12 +311,6 @@ int execute(int argc, char **argv)
             goto end;
           }
           kill(-jobs[i].pid, sig);
-          // if (sig == 20)
-          //   jobs[i].status = 2;
-          // else if (sig == 18)
-          //   jobs[i].status = 0;
-          // else
-          //   jobs[i].status = -1;
           tmp = 0;
         }
         else
@@ -388,12 +324,6 @@ int execute(int argc, char **argv)
             goto end;
           }
           kill(jobs[i].pid, sig);
-          // if (sig == 20)
-          //   jobs[i].status = 2;
-          // else if (sig == 18)
-          //   jobs[i].status = 0;
-          // else
-          //   jobs[i].status = -1;
           tmp = 0;
         }
       }
@@ -657,7 +587,6 @@ int main(int argc, char const *argv[])
     prompt(s, num_jobs);
     if (buf != NULL)
       free(buf);
-
     buf = readline(s);
     add_history(buf);
     if (buf == NULL)
@@ -676,8 +605,8 @@ int main(int argc, char const *argv[])
       {
         if (num_jobs != 0)
         {
-          fprintf(stderr, "Il y a des jobs en cours\n");
-          ret = 1;
+          write(stderr, "Il y a des jobs en cours\n",25);
+         ret = 1;
           goto jobs;
         }
         else if (nbw == 2)
