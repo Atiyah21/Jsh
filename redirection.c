@@ -29,7 +29,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -39,7 +39,7 @@ int redirection(char **ligne, int nbw)
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
-                    fprintf(stderr, "jsh: File doesn't exist\n");
+                    write(stderr, "jsh: File doesn't exist\n",24);
                     return -1;
                 }
                 tmp = 1;
@@ -49,7 +49,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -59,7 +59,7 @@ int redirection(char **ligne, int nbw)
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
-                    fprintf(stderr, "jsh: cannot overwrite existing file\n");
+                    write(stderr, "jsh: cannot overwrite existing file\n",37);
                     return -1;
                 }
                 tmp = 1;
@@ -69,7 +69,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -86,7 +86,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -105,7 +105,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -115,7 +115,7 @@ int redirection(char **ligne, int nbw)
                 ligne[i] = NULL;
                 if (fd == -1)
                 {
-                    fprintf(stderr, "jsh: cannot overwrite existing file\n");
+                    write(stderr, "jsh: cannot overwrite existing file\n",37);
                     return -1;
                 }
                 tmp = 1;
@@ -125,7 +125,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -144,7 +144,7 @@ int redirection(char **ligne, int nbw)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n");
+                write(stderr, "jsh: Missing arguement\n",24);
                 return -1;
             }
             else
@@ -172,7 +172,7 @@ int command_pipe(char **ligne, int nbw, int ret)
         {
             if (i + 1 >= nbw)
             {
-                fprintf(stderr, "jsh: Missing arguement\n"); // TODO changer en write sur 2
+                write(stderr, "jsh: Missing arguement\n",24); // TODO changer en write sur 2
                 return -1;
             }
             else
@@ -219,13 +219,13 @@ int process_substitution(int nbw, char **ligne)
             int j = next(ligne + i);
             if (j == -1)
             {
-                fprintf(stderr, "jsh: Missing arguements\n");
+                write(stderr, "jsh: Missing arguements\n", 24);
                 return -1;
             }
             else
             {
                 // if(i==-1){
-                //     fprintf(stderr, "jsh: Panthesis not closed\n");
+                //     write(stderr, "jsh: Panthesis not closed\n");
                 //     return -1;
                 // }
                 // int e=0;
@@ -235,7 +235,7 @@ int process_substitution(int nbw, char **ligne)
                 int file = open(c, O_RDWR | O_NONBLOCK);
                 if (file == -1)
                 {
-                    fprintf(stderr, "jsh: Process substitution error\n"); // TODO changer en write sur 2
+                    write(stderr, "jsh: Process substitution error\n",32); // TODO changer en write sur 2
                     return -1;
                 }
                 int stin = dup(STDIN_FILENO);
